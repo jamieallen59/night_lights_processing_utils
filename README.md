@@ -8,7 +8,7 @@ For use on:
 - Specifically, the **VNP46A2** product:https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2/
 - Relevant data can be downloaded from https://ladsweb.modaps.eosdis.nasa.gov/search/
 - Many of these post-processing steps are defined here: https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
-- I would strongly recommend reading page 15-18 of the [Black Marble guide](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.1_July_2020.pdf) before continuing.
+- I would strongly recommend reading page 16-17 of the [Black Marble guide](https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf) before continuing.
 
 ---
 

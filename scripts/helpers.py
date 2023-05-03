@@ -9,12 +9,12 @@ def getSubDataset(name, dataset):
             return subdataset[0]
 
 
-def getCommandLineTranslateOptions(rlayer):
+def getCommandLineTranslateOptions(dataset):
     # collect bounding box coordinates
     # Tile numbers are MODIS grid numbers:
     # https://modis-land.gsfc.nasa.gov/MODLAND_grid.html
-    HorizontalTileNumber = int(rlayer.GetMetadata_Dict()["HorizontalTileNumber"])
-    VerticalTileNumber = int(rlayer.GetMetadata_Dict()["VerticalTileNumber"])
+    HorizontalTileNumber = int(dataset.GetMetadata_Dict()["HorizontalTileNumber"])
+    VerticalTileNumber = int(dataset.GetMetadata_Dict()["VerticalTileNumber"])
 
     print("HorizontalTileNumber:", HorizontalTileNumber)
     print("VerticalTileNumber:", VerticalTileNumber)

@@ -20,7 +20,6 @@ def getSingleDatasetFromHd5(hd5File, subDatasetName):
     all_datasets = hdflayer.GetSubDatasets()
     selected_subdataset = helpers.getSubDataset(subDatasetName, all_datasets)
     sub_dataset = gdal.Open(selected_subdataset, gdal.GA_ReadOnly)
-    print("selected_subdataset", selected_subdataset)
 
     # Get chars from position 92 to the end
     # example dataset name: HDF5:"VNP46A1.A2014001.h25v06.001.2019123191150.h5"://HDFEOS/GRIDS/VNP_Grid_DNB/Data_Fields/DNB_At_Sensor_Radiance_500m
@@ -52,7 +51,8 @@ filename = all_files[SELECTED_FILE]
 # Extract the dataset from that file
 dataset, sub_dataset_ouput_name = getSingleDatasetFromHd5(filename, SELECTED_DATASET)
 # Get the destination filename
-destination_filename = getDestinationFilename(filename, sub_dataset_ouput_name)
+destination_filename = constants.OUTPUT_FOLDER + getDestinationFilename(filename, sub_dataset_ouput_name)
+print("Destination filename:", destination_filename)
 # Get command line options to pass to gdal.TranslateOptions
 translate_option_text = helpers.getCommandLineTranslateOptions(dataset)
 # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.TranslateOptions
