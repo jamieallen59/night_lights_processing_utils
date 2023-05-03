@@ -17,6 +17,16 @@ SELECTED_DATASET = "DNB_At_Sensor_Radiance_500m"
 SELECTED_FILE_INDEX = 0
 
 
+def getAllSubdatasetNames(subdatasets):
+    subdataset_names = []
+
+    for subdataset in subdatasets:
+        subdataset_name = subdataset[0].split("Data_Fields/", 1)[1]
+        subdataset_names.append(subdataset_name)
+
+    return subdataset_names
+
+
 def getSingleDatasetFromHd5(hd5File, subDatasetName):
     # Open HDF file
     hdflayer = gdal.Open(hd5File, gdal.GA_ReadOnly)
@@ -26,7 +36,9 @@ def getSingleDatasetFromHd5(hd5File, subDatasetName):
     selected_subdataset = helpers.getSubDataset(subDatasetName, all_subdatasets)
     # print("Selected subdataset: ", selected_subdataset)
     if selected_subdataset is None:
-        raise RuntimeError(f"The subdataset: '{subDatasetName}' was not available in dataset {all_subdatasets}")
+        raise RuntimeError(
+            f"\nThe subdataset: '{subDatasetName}' \nWas not available in subdatasets: {getAllSubdatasetNames(all_subdatasets)}"
+        )
 
     sub_dataset = gdal.Open(selected_subdataset, gdal.GA_ReadOnly)
 
