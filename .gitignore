@@ -1,5 +1,7 @@
+# Local environment
 .DS_Store
-
 .vscode
+
+# Project
 output/*
 input/*
