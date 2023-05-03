@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Mostly taken from https://blackmarble.gsfc.nasa.gov/tools/OpenHDF5.py
 from osgeo import gdal
 

@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
 # This script mostly used for testing purposes to check that processing is working
-# correctly on one file before moving onto using multiple_hd5_to_geotiff for larger datasets.
+# correctly on one file before moving onto using the multiple_hd5_to_geotiff script for larger datasets.
 # Mostly taken from https://blackmarble.gsfc.nasa.gov/tools/OpenHDF5.py
 from osgeo import gdal
 import re
@@ -7,18 +9,25 @@ import re
 import constants
 import helpers
 
+# All available datasets for VNP46A2 listed on page 16 here:
+# https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
 SELECTED_DATASET = "DNB_At_Sensor_Radiance_500m"
 # This is why the script is called 'single'.
 # We just get the first filename found based on the index below
-SELECTED_FILE = 0
+SELECTED_FILE_INDEX = 0
 
 
 def getSingleDatasetFromHd5(hd5File, subDatasetName):
     # Open HDF file
     hdflayer = gdal.Open(hd5File, gdal.GA_ReadOnly)
     # Get selected dataset from HDF file
-    all_datasets = hdflayer.GetSubDatasets()
-    selected_subdataset = helpers.getSubDataset(subDatasetName, all_datasets)
+    all_subdatasets = hdflayer.GetSubDatasets()
+    # print("All available datasets: ", all_subdatasets)
+    selected_subdataset = helpers.getSubDataset(subDatasetName, all_subdatasets)
+    # print("Selected subdataset: ", selected_subdataset)
+    if selected_subdataset is None:
+        raise RuntimeError(f"The subdataset: '{subDatasetName}' was not available in dataset {all_subdatasets}")
+
     sub_dataset = gdal.Open(selected_subdataset, gdal.GA_ReadOnly)
 
     # Get chars from position 92 to the end
@@ -46,8 +55,8 @@ def getDestinationFilename(filename, sub_dataset_ouput_name):
 
 # Get all files in the given folder
 all_files = helpers.getAllFilesFrom(constants.INPUT_FOLDER)
-# Get the file in that folder based on the SELECTED_FILE index
-filename = all_files[SELECTED_FILE]
+# Get the file in that folder based on the SELECTED_FILE_INDEX index
+filename = all_files[SELECTED_FILE_INDEX]
 # Extract the dataset from that file
 dataset, sub_dataset_ouput_name = getSingleDatasetFromHd5(filename, SELECTED_DATASET)
 # Get the destination filename
