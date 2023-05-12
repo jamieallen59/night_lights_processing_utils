@@ -5,6 +5,7 @@
 # Mostly taken from https://blackmarble.gsfc.nasa.gov/tools/OpenHDF5.py
 from osgeo import gdal
 import re
+import os
 
 import constants
 import helpers
@@ -104,8 +105,11 @@ def writeDatasetsToTiff(datasets, filename):
 
 
 def main():
+    folder = constants.INPUT_FOLDER
+    # Change from root file into given folder
+    os.chdir(folder)
     # Get all files in the given folder
-    all_files = helpers.getAllFilesFrom(constants.INPUT_FOLDER, constants.FILE_TYPE)
+    all_files = helpers.getAllFilesFrom(folder, constants.FILE_TYPE)
     # Get the file in that folder based on the SELECTED_FILE_INDEX index
     filename = all_files[SELECTED_FILE_INDEX]
     # Extract the dataset from that file

@@ -1,4 +1,5 @@
 import os
+import rio
 
 
 # https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
@@ -54,8 +55,6 @@ def filterFilesThatInclude(subString, filenames):
 
 
 def getAllFilesFrom(folder, filterRequirement):
-    # Change from root file into given folder
-    os.chdir(folder)
     # Get all files in that folder
     allFiles = os.listdir(os.getcwd())
 
@@ -66,3 +65,16 @@ def getAllFilesFrom(folder, filterRequirement):
             f"There are no files in the directory: {folder} with the text: {filterRequirement} in the filename \nINFO: All files in {folder}: {allFiles}"
         )
     return selectedFiles
+
+
+def export_array(array, output_path, metadata):
+    # Write numpy array to GeoTiff
+    try:
+        with rio.open(output_path, "w", **metadata) as dst:
+            dst.write(array, 1)
+    except Exception as error:
+        output_message = print(f"ERROR: {error}")
+    else:
+        output_message = print(f"Exported: {os.path.split(output_path)[-1]}")
+
+    return output_message
