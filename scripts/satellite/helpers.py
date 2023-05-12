@@ -44,9 +44,25 @@ def getCommandLineTranslateOptions(dataset):
     return EPSG + GEOREFERENCED_BOUNDS
 
 
-def getAllFilesFrom(folder):
+def filterFilesThatInclude(subString, filenames):
+    filtered = []
+
+    for filename in filenames:
+        if subString in filename:
+            filtered.append(filename)
+    return filtered
+
+
+def getAllFilesFrom(folder, filterRequirement):
     # Change from root file into given folder
     os.chdir(folder)
     # Get all files in that folder
     allFiles = os.listdir(os.getcwd())
-    return allFiles
+
+    selectedFiles = filterFilesThatInclude(filterRequirement, allFiles)
+
+    if not selectedFiles:
+        raise RuntimeError(
+            f"There are no files in the directory: {folder} with the text: {filterRequirement} in the filename \nINFO: All files in {folder}: {allFiles}"
+        )
+    return selectedFiles

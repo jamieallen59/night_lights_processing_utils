@@ -6,22 +6,9 @@ from osgeo import gdal
 import constants
 import helpers
 
-SELECTED_DATASET = "DNB_At_Sensor_Radiance_500m"
-
-
-def filterFilesThatInclude(subString, filenames):
-    filtered = []
-
-    for filename in filenames:
-        if subString in filename:
-            filtered.append(filename)
-    return filtered
-
-
-allFiles = helpers.getAllFilesFrom(constants.INPUT_FOLDER)
+all_files = helpers.getAllFilesFrom(constants.INPUT_FOLDER, constants.FILE_TYPE)
 # Get only the files for a specific dataset
-VNP46A2Files = filterFilesThatInclude("VNP46A2", allFiles)
-firstFile = VNP46A2Files[0]
+firstFile = all_files[0]
 
 # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.BuildVRT
 # Open HDF file
