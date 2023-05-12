@@ -16,8 +16,8 @@ def getCommandLineTranslateOptions(dataset):
     HorizontalTileNumber = int(dataset.GetMetadata_Dict()["HorizontalTileNumber"])
     VerticalTileNumber = int(dataset.GetMetadata_Dict()["VerticalTileNumber"])
 
-    print("HorizontalTileNumber:", HorizontalTileNumber)
-    print("VerticalTileNumber:", VerticalTileNumber)
+    # print("HorizontalTileNumber:", HorizontalTileNumber)
+    # print("VerticalTileNumber:", VerticalTileNumber)
 
     WestBoundCoord = (10 * HorizontalTileNumber) - 180
     NorthBoundCoord = 90 - (10 * VerticalTileNumber)

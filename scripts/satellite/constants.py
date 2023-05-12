@@ -4,7 +4,7 @@ OUTPUT_FOLDER = "./output/"
 OUTPUT_PREFIX = "OUTPUT_"
 FILE_EXTENSION_TIF = ".tif"
 FILE_TYPE = "VNP46A2"
-SELECTED_DATASET = "DNB_BRDF-Corrected_NTL"
+SELECTED_DATASETS = ["DNB_BRDF-Corrected_NTL", "Mandatory_Quality_Flag", "QF_Cloud_Mask"]
 # From available:
 # [
 # 'DNB_BRDF-Corrected_NTL',
