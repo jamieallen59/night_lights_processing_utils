@@ -2,14 +2,19 @@
 
 import numpy as np
 import numpy.ma as ma
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 from osgeo import gdal
 import os
+import rasterio
+from rasterio.transform import from_origin
 
 import constants
 import helpers
 
 output_folder = f".{constants.OUTPUT_FOLDER}"
+
+# This file should be run after the hd5 file has already been converted to geotiff by hd5_to_geotiff (currently)
 
 
 def getBand(filename):
@@ -40,51 +45,149 @@ def extract_qa_bits(qa_band, start_bit, end_bit):
     return qa_values
 
 
+def create_metadata(array, transform, driver="GTiff", nodata=0, count=1, crs="epsg:4326"):
+    return {
+        "driver": driver,
+        "dtype": array.dtype,
+        "nodata": nodata,
+        # "width": array.shape[1],
+        # "height": array.shape[0],
+        "width": 500,
+        "height": 500,
+        "count": count,
+        "crs": crs,
+        "transform": transform,
+    }
+
+
+# PROBABLY ALL WRONG as currently related to vnp46a1
+def create_transform_vnp46a1(hdf5):
+    """Creates a geographic transform for a VNP46A1 HDF5 file,
+    based on longitude bounds, latitude bounds, and cell size.
+    """
+    # Extract bounding box from top-level dataset
+    with rasterio.open(hdf5) as dataset:
+        # horizontal_tile_number = int(dataset.GetMetadata_Dict()["HorizontalTileNumber"])
+        # vertical_tile_number = int(dataset.GetMetadata_Dict()["VerticalTileNumber"])
+
+        # horizontal_tile_number = int(dataset.GetMetadata_Dict()["NC_GLOBAL#HorizontalTileNumber"])
+        # vertical_tile_number = int(dataset.GetMetadata_Dict()["NC_GLOBAL#VerticalTileNumber"])
+
+        # longitude_min = (10 * horizontal_tile_number) - 180
+        # latitude_max = 90 - (10 * vertical_tile_number)
+        # longitude_max = longitude_min + 10
+        # latitude_min = latitude_max - 10
+
+        # longitude_min = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_WestBoundingCoord"])
+        # longitude_max = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_EastBoundingCoord"])
+        # latitude_min = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_SouthBoundingCoord"])
+        # latitude_max = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_NorthBoundingCoord"])
+        # print("dataset.tags()", dataset.tags())
+        # print("dataset.meta", dataset.meta)
+
+        longitude_min = int(dataset.tags()["NC_GLOBAL#WestBoundingCoord"])
+        longitude_max = int(dataset.tags()["NC_GLOBAL#EastBoundingCoord"])
+        latitude_min = int(dataset.tags()["NC_GLOBAL#SouthBoundingCoord"])
+        latitude_max = int(dataset.tags()["NC_GLOBAL#NorthBoundingCoord"])
+        print("longitude_min", longitude_min)
+        print("longitude_max", longitude_max)
+        print("latitude_min", latitude_min)
+        print("latitude_max", latitude_max)
+
+        # Extract number of row and columns from first
+        #  Science Data Set (subdataset/band)
+        # with rasterio.open(dataset.subdatasets[0]) as science_data_set:
+        #     num_rows, num_columns = (
+        #         science_data_set.meta.get("height"),
+        #         science_data_set.meta.get("width"),
+        #     )
+
+        num_columns = dataset.meta.get("height")
+        num_rows = dataset.meta.get("width")
+        print("num_columns", num_columns)
+        print("num_rows", num_rows)
+
+    # Define transform (top-left corner, cell size)
+    transform = from_origin(
+        longitude_min,
+        latitude_max,
+        (longitude_max - longitude_min) / num_columns,
+        (latitude_max - latitude_min) / num_rows,
+    )
+
+    return transform
+
+
 # Masks
-def maskForFillValues(array):
-    # Mask radiance for fill value (dnb_brdf_corrected_ntl == 65535)
+# Valid ranges and 'fill value' all defined here:
+# https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
+# The 'fill value' is a value used to show that data is missing for that pixel.
+# The variables below are essentially config to adjust how your images are processed.
+dnb_brdf_corrected_ntl_fill_value = 6553.5
+mandatory_quality_flag_fill_value = 255
+mandatory_quality_flag_poor_quality_value = 2
+# Need to validate this as value in docs says '10'
+cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_probably_cloudy = 2
+# Need to validate this as value in docs says '11'
+cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_confident_cloudy = 3
+# Need to validate this as value in docs says '011'
+cloud_mask_quality_flag_land_water_background_sea_water = 3
+
+
+# array is the array of pixels for DNB_BRDF-Corrected_NTL
+def removeMissingDataFrom(array):
     return ma.masked_where(
-        array == 6553.5,
+        array == dnb_brdf_corrected_ntl_fill_value,
         array,
         copy=True,
     )
 
 
-def maskForPoorQualityAndNoRetrieval(masked_for_fill_value):
-    # Mask radiance for 'poor quality' (mandatory_quality_flag == 2)
-    masked_for_poor_quality = ma.masked_where(mandatory_quality_flag == 2, masked_for_fill_value, copy=True)
-    # Mask radiance for 'no retrieval' (mandatory_quality_flag == 255)
-    masked_for_poor_quality_and_no_retrieval = ma.masked_where(
-        mandatory_quality_flag == 255, masked_for_poor_quality, copy=True
+# removing fill values and low quality pixels using the Mandatory_Quality_Flag1 mask
+def applyMandatoryQualityFlagMask(array):
+    all_mandatory_quality_flag_ntl_files = helpers.getAllFilesFrom(folder, constants.QUALITY_FLAG)
+    first_mandatory_quality_flag_ntl_file = all_mandatory_quality_flag_ntl_files[0]
+    mandatory_quality_flag = getBand(first_mandatory_quality_flag_ntl_file)
+
+    masked_for_fill_values = ma.masked_where(
+        mandatory_quality_flag == mandatory_quality_flag_fill_value, array, copy=True
     )
 
-    return masked_for_poor_quality_and_no_retrieval
+    masked_for_poor_quality = ma.masked_where(
+        mandatory_quality_flag == mandatory_quality_flag_poor_quality_value, masked_for_fill_values, copy=True
+    )
+
+    return masked_for_poor_quality
 
 
-def maskForClouds(cloud_mask, masked_for_poor_quality_and_no_retrieval):
-    # Extract QF_Cloud_Mask bits 6-7 (Cloud Detection Results & Confidence Indicator)
+def applyCloudQualityFlagMask(array):
+    cloud_mask_ntl_files = helpers.getAllFilesFrom(folder, constants.CLOUD_MASK)
+    cloud_mask = getBand(cloud_mask_ntl_files[0])
+
+    # Cloud Detection Results & Confidence Indicator: Extract QF_Cloud_Mask bits 6-7
     cloud_detection_bitmask = extract_qa_bits(qa_band=cloud_mask, start_bit=6, end_bit=7)
-    # Mask radiance for 'probably cloudy' (cloud_mask == 2)
     masked_for_probably_cloudy = ma.masked_where(
-        cloud_detection_bitmask == 2, masked_for_poor_quality_and_no_retrieval, copy=True
+        cloud_detection_bitmask
+        == cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_probably_cloudy,
+        array,
+        copy=True,
     )
-    # Mask radiance for 'confident cloudy' (cloud_mask == 3)
-    masked_for_probably_and_confident_cloudy = ma.masked_where(
-        cloud_detection_bitmask == 3, masked_for_probably_cloudy, copy=True
+    masked_for_confident_cloudy = ma.masked_where(
+        cloud_detection_bitmask
+        == cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_confident_cloudy,
+        masked_for_probably_cloudy,
+        copy=True,
     )
 
-    return masked_for_probably_and_confident_cloudy
-
-
-def maskForSeaWater(cloud_mask, masked_for_probably_and_confident_cloudy):
-    # Extract QF_Cloud_Mask bits 1-3 (Land/Water Background)
+    # Land/Water Background: Extract QF_Cloud_Mask bits 1-3
     land_water_bitmask = extract_qa_bits(qa_band=cloud_mask, start_bit=1, end_bit=3)
-    # Mask radiance for sea water (land_water_bitmask == 3)
-    masked_for_land_water = ma.masked_where(
-        land_water_bitmask == 3, masked_for_probably_and_confident_cloudy, copy=True
+    masked_for_sea_water = ma.masked_where(
+        land_water_bitmask == cloud_mask_quality_flag_land_water_background_sea_water,
+        masked_for_confident_cloudy,
+        copy=True,
     )
 
-    return masked_for_land_water
+    return masked_for_sea_water
 
 
 folder = constants.OUTPUT_FOLDER
@@ -92,24 +195,75 @@ folder = constants.OUTPUT_FOLDER
 os.chdir(folder)
 
 BRDF_corrected_ntl_files = helpers.getAllFilesFrom(folder, constants.BRDF_CORRECTED)
-quality_flag_ntl_files = helpers.getAllFilesFrom(folder, constants.QUALITY_FLAG)
-cloud_mask_ntl_files = helpers.getAllFilesFrom(folder, constants.CLOUD_MASK)
-
 BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
-mandatory_quality_flag = getBand(quality_flag_ntl_files[0])
-cloud_mask = getBand(cloud_mask_ntl_files[0])
 
 print("Applying scale factor...")
 dnb_brdf_corrected_ntl_scaled = BRDF_corrected_ntl_file.astype("float") * 0.1
 print("Masking for fill values...")
-masked_for_fill_value = maskForFillValues(dnb_brdf_corrected_ntl_scaled)
+masked_for_fill_value = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
 print("Masking for poor quality and no retrieval...")
-masked_for_poor_quality_and_no_retrieval = maskForPoorQualityAndNoRetrieval(masked_for_fill_value)
+masked_for_poor_quality_and_no_retrieval = applyMandatoryQualityFlagMask(masked_for_fill_value)
 print("Masking for clouds...")
-masked_for_probably_and_confident_cloudy = maskForClouds(cloud_mask, masked_for_poor_quality_and_no_retrieval)
+result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval)
 print("Masking for sea water...")
-masked_for_land_water = maskForSeaWater(cloud_mask, masked_for_probably_and_confident_cloudy)
-print("masked_for_sea_water", masked_for_land_water)
+
+# Do I need to do this?
+# print("Masking for sensor problems...")
+# # Mask radiance for sensor problems (QF_DNB != 0)
+# #  (0 = no problems, any number > 0 means some kind of issue)
+# # masked_for_sensor_problems = ma.masked_where(
+# #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
+# # )
+# masked_for_sensor_problems = ma.masked_where(
+#     qf_dnb > 0, masked_for_sea_water, copy=True
+# )
+
+
+print("Filling masked values...")
+# Set fill value to np.nan and fill masked values
+ma.set_fill_value(result, np.nan)
+filled_data = result.filled()
+print("First three values", filled_data[:3])
+
+print("revert scale factor...")
+final = filled_data.astype("float") * 10
+
+# Get hd5 path
+input_folder = f".{constants.INPUT_FOLDER}"
+# Change from root file into given folder
+os.chdir(input_folder)
+# Get all files in the given folder
+all_files = helpers.getAllFilesFrom(input_folder, constants.FILE_TYPE)
+# Get the file in that folder based on the SELECTED_FILE_INDEX index
+hdf5_path = all_files[0]
+
+print("Current directory", os.getcwd())
+print("Creating metadata...")
+print("hdf5_path", hdf5_path)
+print("width", final.shape)
+print("height", final.shape[1])
+# Create metadata (for export)
+metadata = create_metadata(
+    array=final,
+    transform=create_transform_vnp46a1(hdf5_path),
+    driver="GTiff",
+    nodata=np.nan,
+    count=1,
+    crs="epsg:4326",
+)
+
+
+print("Exporting to GeoTiff...")
+# Export masked array to GeoTiff (no data set to np.nan in export)
+# export_name = (
+#     f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
+# )
+export_name = "processed_file2.tif"
+helpers.export_array(
+    array=final,
+    output_path=os.path.join(output_folder, export_name),
+    metadata=metadata,
+)
 
 # Needs to write array to a new geotiff file using helpers.export_array
 # Then check file in googleearth

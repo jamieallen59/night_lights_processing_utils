@@ -1,5 +1,5 @@
 import os
-import rio
+import rasterio
 
 
 # https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
@@ -70,7 +70,7 @@ def getAllFilesFrom(folder, filterRequirement):
 def export_array(array, output_path, metadata):
     # Write numpy array to GeoTiff
     try:
-        with rio.open(output_path, "w", **metadata) as dst:
+        with rasterio.open(output_path, "w", **metadata) as dst:
             dst.write(array, 1)
     except Exception as error:
         output_message = print(f"ERROR: {error}")
