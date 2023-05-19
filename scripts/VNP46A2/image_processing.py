@@ -9,14 +9,14 @@ import os
 import rasterio
 from rasterio.transform import from_origin
 
-import constants
-import helpers
+from . import constants
+from . import helpers
 
 output_folder = f".{constants.OUTPUT_FOLDER}"
+image_output_size = 512
+
 
 # This file should be run after the hd5 file has already been converted to geotiff by hd5_to_geotiff (currently)
-
-
 def getBand(filename):
     data_set = gdal.Open(filename, gdal.GA_ReadOnly)
     raster_band = data_set.GetRasterBand(1)
@@ -50,62 +50,27 @@ def create_metadata(array, transform, driver="GTiff", nodata=0, count=1, crs="ep
         "driver": driver,
         "dtype": array.dtype,
         "nodata": nodata,
-        # "width": array.shape[1],
-        # "height": array.shape[0],
-        "width": 500,
-        "height": 500,
+        "width": image_output_size,
+        "height": image_output_size,
         "count": count,
         "crs": crs,
         "transform": transform,
     }
 
 
-# PROBABLY ALL WRONG as currently related to vnp46a1
-def create_transform_vnp46a1(hdf5):
-    """Creates a geographic transform for a VNP46A1 HDF5 file,
+def create_transform_vnp46a2(hdf5):
+    """Creates a geographic transform for a VNP46A2 HDF5 file,
     based on longitude bounds, latitude bounds, and cell size.
     """
     # Extract bounding box from top-level dataset
     with rasterio.open(hdf5) as dataset:
-        # horizontal_tile_number = int(dataset.GetMetadata_Dict()["HorizontalTileNumber"])
-        # vertical_tile_number = int(dataset.GetMetadata_Dict()["VerticalTileNumber"])
-
-        # horizontal_tile_number = int(dataset.GetMetadata_Dict()["NC_GLOBAL#HorizontalTileNumber"])
-        # vertical_tile_number = int(dataset.GetMetadata_Dict()["NC_GLOBAL#VerticalTileNumber"])
-
-        # longitude_min = (10 * horizontal_tile_number) - 180
-        # latitude_max = 90 - (10 * vertical_tile_number)
-        # longitude_max = longitude_min + 10
-        # latitude_min = latitude_max - 10
-
-        # longitude_min = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_WestBoundingCoord"])
-        # longitude_max = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_EastBoundingCoord"])
-        # latitude_min = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_SouthBoundingCoord"])
-        # latitude_max = int(dataset.tags()["HDFEOS_GRIDS_VNP_Grid_DNB_NorthBoundingCoord"])
-        # print("dataset.tags()", dataset.tags())
-        # print("dataset.meta", dataset.meta)
-
         longitude_min = int(dataset.tags()["NC_GLOBAL#WestBoundingCoord"])
         longitude_max = int(dataset.tags()["NC_GLOBAL#EastBoundingCoord"])
         latitude_min = int(dataset.tags()["NC_GLOBAL#SouthBoundingCoord"])
         latitude_max = int(dataset.tags()["NC_GLOBAL#NorthBoundingCoord"])
-        print("longitude_min", longitude_min)
-        print("longitude_max", longitude_max)
-        print("latitude_min", latitude_min)
-        print("latitude_max", latitude_max)
 
-        # Extract number of row and columns from first
-        #  Science Data Set (subdataset/band)
-        # with rasterio.open(dataset.subdatasets[0]) as science_data_set:
-        #     num_rows, num_columns = (
-        #         science_data_set.meta.get("height"),
-        #         science_data_set.meta.get("width"),
-        #     )
-
-        num_columns = dataset.meta.get("height")
-        num_rows = dataset.meta.get("width")
-        print("num_columns", num_columns)
-        print("num_rows", num_rows)
+        num_rows = dataset.meta.get("height")
+        num_columns = dataset.meta.get("width")
 
     # Define transform (top-left corner, cell size)
     transform = from_origin(
@@ -114,6 +79,7 @@ def create_transform_vnp46a1(hdf5):
         (longitude_max - longitude_min) / num_columns,
         (latitude_max - latitude_min) / num_rows,
     )
+    print("transform", transform)
 
     return transform
 
@@ -190,82 +156,75 @@ def applyCloudQualityFlagMask(array):
     return masked_for_sea_water
 
 
-folder = constants.OUTPUT_FOLDER
-# Change from root file into given folder
-os.chdir(folder)
+def main():
+    folder = constants.OUTPUT_FOLDER
+    # Change from root file into given folder
+    os.chdir(folder)
 
-BRDF_corrected_ntl_files = helpers.getAllFilesFrom(folder, constants.BRDF_CORRECTED)
-BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
+    BRDF_corrected_ntl_files = helpers.getAllFilesFrom(folder, constants.BRDF_CORRECTED)
+    BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
 
-print("Applying scale factor...")
-dnb_brdf_corrected_ntl_scaled = BRDF_corrected_ntl_file.astype("float") * 0.1
-print("Masking for fill values...")
-masked_for_fill_value = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
-print("Masking for poor quality and no retrieval...")
-masked_for_poor_quality_and_no_retrieval = applyMandatoryQualityFlagMask(masked_for_fill_value)
-print("Masking for clouds...")
-result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval)
-print("Masking for sea water...")
+    print("Applying scale factor...")
+    dnb_brdf_corrected_ntl_scaled = BRDF_corrected_ntl_file.astype("float") * 0.1
+    print("Masking for fill values...")
+    masked_for_fill_value = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
+    print("Masking for poor quality and no retrieval...")
+    masked_for_poor_quality_and_no_retrieval = applyMandatoryQualityFlagMask(masked_for_fill_value)
+    print("Masking for clouds...")
+    result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval)
+    print("Masking for sea water...")
 
-# Do I need to do this?
-# print("Masking for sensor problems...")
-# # Mask radiance for sensor problems (QF_DNB != 0)
-# #  (0 = no problems, any number > 0 means some kind of issue)
-# # masked_for_sensor_problems = ma.masked_where(
-# #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
-# # )
-# masked_for_sensor_problems = ma.masked_where(
-#     qf_dnb > 0, masked_for_sea_water, copy=True
-# )
+    # Do I need to do this?
+    # print("Masking for sensor problems...")
+    # # Mask radiance for sensor problems (QF_DNB != 0)
+    # #  (0 = no problems, any number > 0 means some kind of issue)
+    # # masked_for_sensor_problems = ma.masked_where(
+    # #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
+    # # )
+    # masked_for_sensor_problems = ma.masked_where(
+    #     qf_dnb > 0, masked_for_sea_water, copy=True
+    # )
+
+    print("Filling masked values...")
+    # Set fill value to np.nan and fill masked values
+    ma.set_fill_value(result, np.nan)
+    filled_data = result.filled()
+
+    print("revert scale factor...")
+    final = filled_data.astype("float") * 10
+
+    # Get hd5 path
+    input_folder = f".{constants.INPUT_FOLDER}"
+    # Change from root file into given folder
+    os.chdir(input_folder)
+    # Get all files in the given folder
+    all_files = helpers.getAllFilesFrom(input_folder, constants.FILE_TYPE)
+    # Get the file in that folder based on the SELECTED_FILE_INDEX index
+    hdf5_path = all_files[0]
+
+    print("Creating metadata...")
+    # Create metadata (for export)
+    metadata = create_metadata(
+        array=final,
+        transform=create_transform_vnp46a2(hdf5_path),
+        driver="GTiff",
+        nodata=np.nan,
+        count=1,
+        crs="epsg:4326",
+    )
+
+    export_name = "processed_file2.tif"
+    # Export masked array to GeoTiff (no data set to np.nan in export)
+    # export_name = (
+    #     f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
+    # )
+    helpers.export_array(
+        array=final,
+        output_path=os.path.join(output_folder, export_name),
+        metadata=metadata,
+    )
 
 
-print("Filling masked values...")
-# Set fill value to np.nan and fill masked values
-ma.set_fill_value(result, np.nan)
-filled_data = result.filled()
-print("First three values", filled_data[:3])
-
-print("revert scale factor...")
-final = filled_data.astype("float") * 10
-
-# Get hd5 path
-input_folder = f".{constants.INPUT_FOLDER}"
-# Change from root file into given folder
-os.chdir(input_folder)
-# Get all files in the given folder
-all_files = helpers.getAllFilesFrom(input_folder, constants.FILE_TYPE)
-# Get the file in that folder based on the SELECTED_FILE_INDEX index
-hdf5_path = all_files[0]
-
-print("Current directory", os.getcwd())
-print("Creating metadata...")
-print("hdf5_path", hdf5_path)
-print("width", final.shape)
-print("height", final.shape[1])
-# Create metadata (for export)
-metadata = create_metadata(
-    array=final,
-    transform=create_transform_vnp46a1(hdf5_path),
-    driver="GTiff",
-    nodata=np.nan,
-    count=1,
-    crs="epsg:4326",
-)
-
-
-print("Exporting to GeoTiff...")
-# Export masked array to GeoTiff (no data set to np.nan in export)
-# export_name = (
-#     f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
-# )
-export_name = "processed_file2.tif"
-helpers.export_array(
-    array=final,
-    output_path=os.path.join(output_folder, export_name),
-    metadata=metadata,
-)
-
-# Needs to write array to a new geotiff file using helpers.export_array
-# Then check file in googleearth
-# Then crop pixels related to Lucknow. Should probably do this before processing begins?
-# Then compare with ground truth
+if __name__ == "__main__":
+    # your module-level code here
+    main()

@@ -7,7 +7,7 @@ from osgeo import gdal
 import re
 import os
 
-import constants
+from . import constants
 import helpers
 
 # This is why the script is called 'single'.
@@ -45,7 +45,7 @@ def getSingleDatasetFromHd5(hd5_file, dataset_name):
     sub_dataset = gdal.Open(selected_subdataset, READ_METHOD)
 
     # Print some metadata
-    meta_data = hdflayer.GetMetadata()
+    # meta_data = hdflayer.GetMetadata()
     # print("All metadata", meta_data)
     # print("Metadata showing when the image was taken:")
     # print("RangeBeginningDate", meta_data["RangeBeginningDate"])
@@ -91,6 +91,7 @@ def getDestinationFilename(filename, sub_dataset_ouput_name):
 def writeDatasetsToTiff(datasets, filename):
     for dataset in datasets:
         sub_dataset, sub_dataset_ouput_name = dataset
+
         # Get the destination filename
         destination_filename = f".{constants.OUTPUT_FOLDER}" + getDestinationFilename(filename, sub_dataset_ouput_name)
         # Get command line options to pass to gdal.TranslateOptions
@@ -114,7 +115,10 @@ def main():
     filename = all_files[SELECTED_FILE_INDEX]
     # Extract the dataset from that file
     datasets = getDatasetsFromHd5(filename, constants.SELECTED_DATASETS)
-    writeDatasetsToTiff(datasets, filename)
+    print("constants.SELECTED_DATASETS", constants.SELECTED_DATASETS)
+    print("datasets", datasets)
+
+    # writeDatasetsToTiff(datasets, filename)
 
 
 if __name__ == "__main__":
