@@ -1,15 +1,25 @@
-from ..image_processing import create_metadata
+from ..image_processing import create_metadata, extract_qa_bits
 import numpy as np
 import unittest
 
-# import sys
 
-# sys.path.append("../")
+class TestExtractQaBits(unittest.TestCase):
+    def test_extract_qa_bits(self):
+        qa_band = 5
+        start_bit = 1
+        end_bit = 3
+
+        result = extract_qa_bits(qa_band, start_bit, end_bit)
+
+        # Work this test out!
+        # Not clear why this should be 2
+        expected_result = 2
+
+        self.assertEqual(result, expected_result)
 
 
 class TestCreateMetadata(unittest.TestCase):
     def test_create_metadata(self):
-        # Test input values
         array = np.zeros((100, 100), dtype=np.uint8)
         transform = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         driver = "Other"
@@ -17,8 +27,9 @@ class TestCreateMetadata(unittest.TestCase):
         count = 2
         crs = "test:epsg:4326"
 
-        # Expected output
-        expected_metadata = {
+        result = create_metadata(array, transform, driver, nodata, count, crs)
+
+        expected_result = {
             "driver": driver,
             "dtype": array.dtype,
             "nodata": nodata,
@@ -29,12 +40,7 @@ class TestCreateMetadata(unittest.TestCase):
             "transform": transform,
         }
 
-        # Call the function
-        result = create_metadata(array, transform, driver, nodata, count, crs)
-
-        # Assertion
-        # assert result == expected_metadata
-        self.assertEqual(result, expected_metadata)
+        self.assertEqual(result, expected_result)
 
 
 if __name__ == "__main__":

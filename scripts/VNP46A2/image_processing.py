@@ -37,6 +37,7 @@ def extract_qa_bits(qa_band, start_bit, end_bit):
         qa_bits += bit**2
     # Check QA band against specified QA bits to see what
     #  QA flag values are set
+
     qa_flags_set = qa_band & qa_bits
     # Get base-10 value that matches bitmask documentation
     #  (0-1 for single bit, 0-3 for 2 bits, or 0-2^N for N bits)

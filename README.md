@@ -47,6 +47,14 @@ python3 scripts/satellite/single_hd5_to_geotiff.py
 python3 scripts/satellite/multiple_hd5_to_geotiff.py
 ```
 
+## Testing
+
+To run a test file e.g:
+
+```bash
+ python3 -m unittest scripts.VNP46A2.tests.image_processing
+```
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first
