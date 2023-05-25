@@ -17,8 +17,15 @@ For use on:
 You will need [python 3](https://www.python.org/downloads/).
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the scripts requirements.
 
+Activate a virtual environment (https://realpython.com/python-virtual-environments-a-primer/):
+
 ```bash
-pip3 install -r requirements.txt
+python -m venv venv
+. venv/bin/activate
+```
+
+```bash
+pip install -r requirements.txt
 ```
 
 In the project structure there are directories:
@@ -38,13 +45,13 @@ Once you have the files you want in the input directory, there are a set of scri
 1. Convert single hd5 files to geotiff: [single_hd5_to_geotiff](./scripts//satellite//single_hd5_to_geotiff.py). To run:
 
 ```bash
-python3 scripts/satellite/single_hd5_to_geotiff.py
+python scripts/satellite/single_hd5_to_geotiff.py
 ```
 
 2. Convert multiple hd5 files to geotiff: [multiple_hd5_to_geotiff](./scripts//satellite//multiple_hd5_to_geotiff.py). To run:
 
 ```bash
-python3 scripts/satellite/multiple_hd5_to_geotiff.py
+python scripts/satellite/multiple_hd5_to_geotiff.py
 ```
 
 ## Testing
@@ -52,7 +59,7 @@ python3 scripts/satellite/multiple_hd5_to_geotiff.py
 To run a test file e.g:
 
 ```bash
- python3 -m unittest scripts.VNP46A2.tests.image_processing
+ python -m unittest scripts.VNP46A2.tests.image_processing
 ```
 
 ## Contributing

@@ -11,3 +11,6 @@ scripts/__pycache__/*
 output/*
 input/*
 *.pyc
+ground-truth/*
+nightlights_processing.egg-info
+venv

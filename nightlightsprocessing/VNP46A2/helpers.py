@@ -10,6 +10,7 @@ def getSubDataset(name, dataset):
             return subdataset[0]
 
 
+# Should probably move out of here
 def getCommandLineTranslateOptions(dataset):
     # collect bounding box coordinates
     # Tile numbers are MODIS grid numbers:
@@ -45,6 +46,7 @@ def getCommandLineTranslateOptions(dataset):
     return EPSG + GEOREFERENCED_BOUNDS
 
 
+# Duplicated in ..helpers. Should be removed
 def filterFilesThatInclude(subString, filenames):
     filtered = []
 
@@ -54,6 +56,7 @@ def filterFilesThatInclude(subString, filenames):
     return filtered
 
 
+# Duplicated in ..helpers. Should be removed
 def getAllFilesFrom(folder, filterRequirement):
     # Get all files in that folder
     allFiles = os.listdir(os.getcwd())
