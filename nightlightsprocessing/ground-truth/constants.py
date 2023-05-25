@@ -1,4 +1,4 @@
-GROUND_TRUTH_FOLDER = "./ground-truth"
+GROUND_TRUTH_FOLDER = "/ground-truth"
 
 #  Matching names used in ESMI location information .csv
 # LOCATIONS_IN_UTTAR_PRADESH = [
