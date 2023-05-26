@@ -8,9 +8,10 @@ scripts/__pycache__/*
 .vscode
 
 # Project
-output/*
-input/*
+output-data/ground-truth/*
+output-data/night-lights/*
+input-data/ground-truth/*
+input-data/night-lights/*
 *.pyc
-ground-truth/*
 nightlights_processing.egg-info
 venv

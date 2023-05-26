@@ -1,4 +1,4 @@
-from ..image_processing import create_metadata, extract_qa_bits
+from .context import nightlightsprocessing
 import numpy as np
 import unittest
 
@@ -9,7 +9,7 @@ class TestExtractQaBits(unittest.TestCase):
         start_bit = 1
         end_bit = 3
 
-        result = extract_qa_bits(qa_band, start_bit, end_bit)
+        result = nightlightsprocessing.extract_qa_bits(qa_band, start_bit, end_bit)
 
         # Work this test out!
         # Not clear why this should be 2
@@ -27,7 +27,7 @@ class TestCreateMetadata(unittest.TestCase):
         count = 2
         crs = "test:epsg:4326"
 
-        result = create_metadata(array, transform, driver, nodata, count, crs)
+        result = nightlightsprocessing.create_metadata(array, transform, driver, nodata, count, crs)
 
         expected_result = {
             "driver": driver,

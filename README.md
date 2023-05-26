@@ -25,10 +25,27 @@ python -m venv venv
 ```
 
 ```bash
-pip install -r requirements.txt
+make setup
 ```
 
 In the project structure there are directories:
+
+    .
+    ├── docs                    # Documentation files
+    ├── input-data
+          ├── ground-truth      # folder to put the input ground truth data
+          └── night-lights      # folder to put the input satellight night light data in (VNP46A1 + VNP46A2)
+    ├── output-data
+          ├── ground-truth      # output folder for ground truth scripts
+          └── night-lights      # output folder for night lights scripts
+    ├── nightlightsprocessing   # Main package folder containing python scripts
+          ├── ground_truth      # scripts for ground truth input data
+          ├── night_lights      # scripts for night lights input data
+          └── mlmodel          # scripts for training and running machine learning analysis models
+    ├── tests                   # Automated tests
+    ├── Makefile                # defines all project interactions
+    ├── LICENSE
+    └── README.md
 
 - [./input](./input)
 - [./output](./output)
