@@ -1,6 +1,6 @@
 from nightlightsprocessing import helpers
-import constants
-from location_information import get_location_information
+from . import constants
+from .location_information import get_location_information
 import pandas as pd
 import os
 

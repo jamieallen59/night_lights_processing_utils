@@ -1,6 +1,5 @@
 import os
 
-
 def filterFilesThatInclude(subString, filenames):
     filtered = []
 
@@ -13,7 +12,6 @@ def filterFilesThatInclude(subString, filenames):
 #  Should be clear that this filters. Name doesn't show that at the mo.
 def getAllFilesFromFolderWithFilename(folder, filename):
     owd = os.getcwd()
-    print("owd", owd)
 
     allFiles = os.listdir(f"{owd}{folder}")
 

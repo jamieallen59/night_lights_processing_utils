@@ -1,5 +1,5 @@
 from nightlightsprocessing import helpers
-import constants
+from . import constants
 import pandas as pd
 import os
 

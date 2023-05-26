@@ -1,6 +1,6 @@
 # Night Lights Processing Utils
 
-`night_lights_processing_utils` is a set of python scripts for managing night lights satellite data.
+`nightlights_processing_utils` is a set of python scripts for managing night lights satellite data.
 
 For use on:
 
@@ -39,8 +39,8 @@ In the project structure there are directories:
           ├── ground-truth      # output folder for ground truth scripts
           └── night-lights      # output folder for night lights scripts
     ├── nightlightsprocessing   # Main package folder containing python scripts
-          ├── ground_truth      # scripts for ground truth input data
-          ├── night_lights      # scripts for night lights input data
+          ├── groundtruth      # scripts for ground truth input data
+          ├── nightlights      # scripts for night lights input data
           └── mlmodel          # scripts for training and running machine learning analysis models
     ├── tests                   # Automated tests
     ├── Makefile                # defines all project interactions

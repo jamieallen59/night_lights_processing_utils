@@ -1,19 +1,19 @@
-VENV = venv
-PIP = $(VENV)/bin/pip
-
 setup:
-	$(PIP) install -r requirements.txt
+	pip install -r requirements.txt
 
 test:
 	python3 -m unittest discover tests
 
 clean:
 	rm -rf __pycache__
-	rm -rf $(VENV)
+	rm -rf venv
 
-venv/bin/activate: requirements.txt
-	python3 -m $(VENV) $(VENV)
-	./$(PIP) install -r requirements.txt
+grid-reliability:
+	python3 -m nightlightsprocessing.groundtruth.grid_reliability
+
+# venv/bin/activate: requirements.txt
+# 	python3 -m $(VENV) $(VENV)
+# 	./$(PIP) install -r requirements.txt
 
 
 # run: venv/bin/activate

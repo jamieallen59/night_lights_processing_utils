@@ -27,7 +27,7 @@ class TestCreateMetadata(unittest.TestCase):
         crs = "test:epsg:4326"
 
         result = nightlightsprocessing.image_processing.create_metadata(array, transform, driver, nodata, count, crs)
-
+        
         expected_result = {
             "driver": driver,
             "dtype": array.dtype,
