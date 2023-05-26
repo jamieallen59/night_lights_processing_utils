@@ -1,12 +1,11 @@
 VENV = venv
-PYTHON = $(VENV)/bin/python3
 PIP = $(VENV)/bin/pip
 
 setup:
 	$(PIP) install -r requirements.txt
 
 test:
-	python -m unittest
+	python3 -m unittest discover tests
 
 clean:
 	rm -rf __pycache__
@@ -17,7 +16,7 @@ venv/bin/activate: requirements.txt
 	./$(PIP) install -r requirements.txt
 
 
-run: venv/bin/activate
-	$(PYTHON) app.py
+# run: venv/bin/activate
+# 	$(PYTHON) app.py
 
 .PHONY: test
