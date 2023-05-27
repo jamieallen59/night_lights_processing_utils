@@ -3,7 +3,7 @@ from . import constants
 import pandas as pd
 import os
 
-folder = constants.GROUND_TRUTH_FOLDER
+folder = constants.INPUT_GROUND_TRUTH_FOLDER
 
 # file info
 LOCATION_INFORMATION_FILENAME = "location information"
@@ -15,8 +15,8 @@ FROM_DATE_COLUMN = "From date"
 TO_DATE_COLUMN = "To date"
 
 # Filter requirements. These should probably be higher up somewhere?
-STATE = "Uttar Pradesh"
-STARTED_BEFORE_DATE = "2014-12-31"  # starting with just the ones that started before in 2014
+# STATE = "Uttar Pradesh"
+# STARTED_BEFORE_DATE = "2014-12-31"  # starting with just the ones that started before in 2014
 
 
 def read_location_information_csv():
@@ -53,11 +53,11 @@ def get_locations_that_started_in(location_information_dataframe, started_before
     return filtered_df
 
 
-def get_location_information():
+def get_location_information(indian_state):
     location_information_dataframe = read_location_information_csv()
 
     # Filtering
-    filtered_df = get_location_information_filtered_by(location_information_dataframe, STATE)
-    filtered_df = get_locations_that_started_in(filtered_df, STARTED_BEFORE_DATE)
+    filtered_df = get_location_information_filtered_by(location_information_dataframe, indian_state)
+    # filtered_df = get_locations_that_started_in(filtered_df, STARTED_BEFORE_DATE)
 
     return filtered_df

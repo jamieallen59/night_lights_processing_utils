@@ -77,6 +77,8 @@ def read_voltage_data_csv(year, start_datetime, end_datetime):
     voltage_dataframe = pd.read_csv(voltage_data_file_path, parse_dates=['Date'], dayfirst=True)
 
     if start_datetime is not None and end_datetime is not None:
+      print(f'Filter data between {start_datetime} and {end_datetime}')
+
       start_hours = start_datetime.time().hour
       start_minute = start_datetime.time().minute
       end_hours = end_datetime.time().hour
@@ -101,14 +103,16 @@ def read_voltage_data_csv(year, start_datetime, end_datetime):
     return voltage_dataframe
 
 
-def filter_voltage_data_by_location_names(voltage_data, location_names):
-    filtered_df = voltage_data[voltage_data[LOCATION_NAME_COLUMN].isin(location_names)]
+# TODO duplicated
+def filter_by_state(data, location_names):
+    filtered_df = data[data[LOCATION_NAME_COLUMN].isin(location_names)]
     filtered_df = helpers.drop_filtered_table_index(filtered_df)
 
     return filtered_df
 
 
 def main(argv):
+    # TODO remove hardcoding
     year = '2014'
     start_datetime = None
     end_datetime = None
@@ -124,17 +128,23 @@ def main(argv):
         print ('Possible options: -s <startdatetime> -e <enddatetime>')
         sys.exit()
       elif opt in ("-s", "--startdatetime"):
-        # start_datetime = arg
         start_datetime = pd.to_datetime(arg)
       elif opt in ("-e", "--enddatetime"):
         end_datetime = pd.to_datetime(arg)
-        # end_datetime = arg
 
-    location_names = get_location_information()[LOCATION_NAME_COLUMN]
+    # Maybe should come from Command line?
+    indian_state = "Uttar pradesh"
+    location_names = get_location_information(indian_state)[LOCATION_NAME_COLUMN]
     voltage_data = read_voltage_data_csv(year, start_datetime, end_datetime)
 
     # Filtering
-    filtered_df = filter_voltage_data_by_location_names(voltage_data, location_names)
+    filtered_df = filter_by_state(voltage_data, location_names)
+    
+    # TODO
+    # split the data by area
+    # split the data by days
+    # scan cell by cell. Count the cells + add them up. Divide by count to get an average.
+    # Return true or false based on set number.
 
     print("RESULTS: ", filtered_df)
 

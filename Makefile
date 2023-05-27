@@ -12,6 +12,9 @@ clean:
 grid-reliability:
 	python3 -m nightlightsprocessing.groundtruth.grid_reliability -s 2014-11-01T23:45:00.000Z -e 2014-11-02T00:15:00.000Z
 
+create-groundtruth:
+	python3 -m nightlightsprocessing.groundtruth.create_location_dataset -s "Uttar Pradesh"
+
 # venv/bin/activate: requirements.txt
 # 	python3 -m $(VENV) $(VENV)
 # 	./$(PIP) install -r requirements.txt
