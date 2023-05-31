@@ -15,11 +15,9 @@ FROM_DATE_COLUMN = "From date"
 TO_DATE_COLUMN = "To date"
 
 # Filter requirements. These should probably be higher up somewhere?
-# STATE = "Uttar Pradesh"
 # STARTED_BEFORE_DATE = "2014-12-31"  # starting with just the ones that started before in 2014
 
-
-def read_location_information_csv():
+def _read_location_information_csv():
     location_information_files = helpers.getAllFilesFromFolderWithFilename(folder, LOCATION_INFORMATION_FILENAME)
     location_information_file = location_information_files[0]
     location_information_file_path = f"{os.getcwd()}{folder}/{location_information_file}"
@@ -31,15 +29,16 @@ def read_location_information_csv():
     return location_information_dataframe
 
 
-def get_location_information_filtered_by(location_information_dataframe, state):
+def _get_location_information_filtered_by(location_information_dataframe, state):
     filtered_df = location_information_dataframe[location_information_dataframe[STATE_COLUMN] == state]
     filtered_df = helpers.drop_filtered_table_index(filtered_df)
 
     return filtered_df
 
 
-# # get_location_information_for(constants.LOCATIONS_IN_UTTAR_PRADESH)
-def get_locations_that_started_in(location_information_dataframe, started_before_date):
+# Adds ability to select locations for only specific timeframes
+# get_location_information_for(constants.LOCATIONS_IN_UTTAR_PRADESH)
+def _get_locations_that_started_in(location_information_dataframe, started_before_date):
     # Convert from and to date columns to datetime types
     location_information_dataframe[FROM_DATE_COLUMN] = pd.to_datetime(location_information_dataframe[FROM_DATE_COLUMN])
     location_information_dataframe[TO_DATE_COLUMN] = pd.to_datetime(location_information_dataframe[TO_DATE_COLUMN])
@@ -53,11 +52,12 @@ def get_locations_that_started_in(location_information_dataframe, started_before
     return filtered_df
 
 
+
 def get_location_information(indian_state):
-    location_information_dataframe = read_location_information_csv()
+    location_information_dataframe = _read_location_information_csv()
 
     # Filtering
-    filtered_df = get_location_information_filtered_by(location_information_dataframe, indian_state)
-    # filtered_df = get_locations_that_started_in(filtered_df, STARTED_BEFORE_DATE)
+    filtered_df = _get_location_information_filtered_by(location_information_dataframe, indian_state)
+    # filtered_df = _get_locations_that_started_in(filtered_df, STARTED_BEFORE_DATE)
 
     return filtered_df

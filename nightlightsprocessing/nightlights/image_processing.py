@@ -12,9 +12,8 @@ from rasterio.transform import from_origin
 from . import constants
 from . import helpers
 
-# TODO: rename this folder variable
-folder = constants.OUTPUT_FOLDER
-output_folder = f".{folder}"
+output_folder = f".{constants.OUTPUT_FOLDER}"
+input_folder = f".{constants.INPUT_FOLDER}"
 image_output_size = 512
 
 
@@ -129,7 +128,7 @@ def applyMandatoryQualityFlagMask(array):
 
 
 def applyCloudQualityFlagMask(array):
-    cloud_mask_ntl_files = helpers.getAllFilesFrom(folder, constants.CLOUD_MASK)
+    cloud_mask_ntl_files = helpers.getAllFilesFrom(constants.OUTPUT_FOLDER, constants.CLOUD_MASK)
     cloud_mask = getBand(cloud_mask_ntl_files[0])
 
     # Cloud Detection Results & Confidence Indicator: Extract QF_Cloud_Mask bits 6-7
@@ -160,9 +159,9 @@ def applyCloudQualityFlagMask(array):
 
 def main():
     # Change from root file into given folder
-    os.chdir(folder)
+    os.chdir(constants.OUTPUT_FOLDER)
 
-    BRDF_corrected_ntl_files = helpers.getAllFilesFrom(folder, constants.BRDF_CORRECTED)
+    BRDF_corrected_ntl_files = helpers.getAllFilesFrom(constants.OUTPUT_FOLDER, constants.BRDF_CORRECTED)
     BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
 
     print("Applying scale factor...")
@@ -195,7 +194,6 @@ def main():
     final = filled_data.astype("float") * 10
 
     # Get hd5 path
-    input_folder = f".{constants.INPUT_FOLDER}"
     # Change from root file into given folder
     os.chdir(input_folder)
     # Get all files in the given folder
@@ -214,7 +212,7 @@ def main():
         crs="epsg:4326",
     )
 
-    export_name = "processed_file2.tif"
+    export_name = "processed_file3.tif"
     # Export masked array to GeoTiff (no data set to np.nan in export)
     # export_name = (
     #     f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
