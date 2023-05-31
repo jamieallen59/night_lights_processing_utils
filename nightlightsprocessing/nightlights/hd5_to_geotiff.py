@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 
-# This script mostly used for testing purposes to check that processing is working
-# correctly on one file before moving onto using the multiple_hd5_to_geotiff script for larger datasets.
-# Mostly taken from https://blackmarble.gsfc.nasa.gov/tools/OpenHDF5.py
 from osgeo import gdal
 import re
 import os
 
-from . import constants
-import helpers
+from nightlightsprocessing import helpers as globalHelpers
 
-# This is why the script is called 'single'.
-# We just get the first filename found based on the index below
-SELECTED_FILE_INDEX = 0
+from . import constants
+from . import helpers
+
 # Can use gdal.GA_Update if you want to modify the file, but it takes longer.
 READ_METHOD = gdal.GA_ReadOnly
-# SELECTED_DATASET = "DNB_BRDF-Corrected_NTL"
 
+# WARNING: VERY FRAGILE. BASED ON YOU'RE LOCAL ENVIRONMENT. 
+LOCAL_ENVIRONMENT_PATH_LENGTH = 190
 
-def getAllSubdatasetNames(subdatasets):
+def _get_all_subdataset_names(subdatasets):
     subdataset_names = []
 
     for subdataset in subdatasets:
@@ -28,9 +25,11 @@ def getAllSubdatasetNames(subdatasets):
     return subdataset_names
 
 
-def getSingleDatasetFromHd5(hd5_file, dataset_name):
+def _get_single_dataset_from_hd5(hd5_file, dataset_name):
     # Open HDF file
-    hdflayer = gdal.Open(hd5_file, READ_METHOD)
+    hdf5filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{hd5_file}"
+    hdflayer = gdal.Open(hdf5filepath, READ_METHOD)
+
     # Get selected dataset from HDF file
     all_subdatasets = hdflayer.GetSubDatasets()
 
@@ -39,61 +38,53 @@ def getSingleDatasetFromHd5(hd5_file, dataset_name):
     # print("Selected subdataset: ", selected_subdataset)
     if selected_subdataset is None:
         raise RuntimeError(
-            f"\nThe subdataset: '{dataset_name}' \nWas not available in subdatasets: {getAllSubdatasetNames(all_subdatasets)}"
+            f"\nThe subdataset: '{dataset_name}' \nWas not available in subdatasets: {_get_all_subdataset_names(all_subdatasets)}"
         )
 
     sub_dataset = gdal.Open(selected_subdataset, READ_METHOD)
 
-    # Print some metadata
-    # meta_data = hdflayer.GetMetadata()
-    # print("All metadata", meta_data)
-    # print("Metadata showing when the image was taken:")
-    # print("RangeBeginningDate", meta_data["RangeBeginningDate"])
-    # print("RangeBeginningTime", meta_data["RangeBeginningTime"])
-    # print("RangeEndingDate", meta_data["RangeEndingDate"])
-    # print("RangeEndingTime", meta_data["RangeEndingTime"])
-
-    # Get chars from position 92 to the end
+    # Get chars from position LOCAL_ENVIRONMENT_PATH_LENGTH to the end
     # example dataset name: HDF5:"VNP46A1.A2014001.h25v06.001.2019123191150.h5"://HDFEOS/GRIDS/VNP_Grid_DNB/Data_Fields/DNB_At_Sensor_Radiance_500m
     # example expected ouput: DNB_At_Sensor_Radiance_500m
-    sub_dataset_name = selected_subdataset[92:]
-    print("Sub dataset name:", sub_dataset_name)
+    sub_dataset_name = selected_subdataset[LOCAL_ENVIRONMENT_PATH_LENGTH:]
 
     return [sub_dataset, sub_dataset_name]
 
 
-def getDatasetsFromHd5(hd5_file, dataset_names):
+def _get_datasets_from_hd5(hd5_file, dataset_names):
     datasets = []
 
     for dataset_name in dataset_names:
-        sub_dataset, sub_dataset_ouput_name = getSingleDatasetFromHd5(hd5_file, dataset_name)
+        sub_dataset, sub_dataset_ouput_name = _get_single_dataset_from_hd5(hd5_file, dataset_name)
 
         datasets.append([sub_dataset, sub_dataset_ouput_name])
 
     return datasets
 
 
-def getDestinationFilename(filename, sub_dataset_ouput_name):
+def _get_destination_filename(filename, sub_dataset_ouput_name):
     # Trim the filename extension
     # (assuming it's 3 characters long as probably '.h5') from the end of the filename
     filename_without_extension = filename[:-3]
+
     # '.' must be removed from the filename to work with Google Earth
-    first_file_main_without_periods = re.sub("\.", "-", filename_without_extension)
+    filename_without_periods = re.sub("\.", "-", filename_without_extension)
+
     # change file name
-    output_name_without_prefix = (
-        sub_dataset_ouput_name + first_file_main_without_periods + constants.FILE_EXTENSION_TIF
+    destination_filename = (
+        sub_dataset_ouput_name + filename_without_periods + constants.FILE_EXTENSION_TIF
     )
-    destination_filename = constants.OUTPUT_PREFIX + output_name_without_prefix
 
     return destination_filename
 
 
-def writeDatasetsToTiff(datasets, filename):
+def _write_datasets_to_tif(datasets, filename):
     for dataset in datasets:
         sub_dataset, sub_dataset_ouput_name = dataset
 
         # Get the destination filename
-        destination_filename = f".{constants.OUTPUT_FOLDER}" + getDestinationFilename(filename, sub_dataset_ouput_name)
+        # Writes to another input folder as becomes the input for other scripts
+        destination_filename = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/" + _get_destination_filename(filename, sub_dataset_ouput_name)
         # Get command line options to pass to gdal.TranslateOptions
         translate_option_text = helpers.getCommandLineTranslateOptions(sub_dataset)
         # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.TranslateOptions
@@ -106,19 +97,15 @@ def writeDatasetsToTiff(datasets, filename):
 
 
 def main():
-    folder = constants.INPUT_FOLDER
-    # Change from root file into given folder
-    os.chdir(folder)
     # Get all files in the given folder
-    all_files = helpers.getAllFilesFrom(folder, constants.FILE_TYPE)
-    # Get the file in that folder based on the SELECTED_FILE_INDEX index
-    filename = all_files[SELECTED_FILE_INDEX]
-    # Extract the dataset from that file
-    datasets = getDatasetsFromHd5(filename, constants.SELECTED_DATASETS)
-    print("constants.SELECTED_DATASETS", constants.SELECTED_DATASETS)
-    print("datasets", datasets)
+    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE)
 
-    # writeDatasetsToTiff(datasets, filename)
+    for filename in all_files:
+      datasets = _get_datasets_from_hd5(filename, constants.SELECTED_DATASETS)
+
+      _write_datasets_to_tif(datasets, filename)
+    
+    print('Completed writing files to .tif')
 
 
 if __name__ == "__main__":

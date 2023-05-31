@@ -17,10 +17,13 @@ create-groundtruth:
 
 
 # night lights
-get-time-spread:
+convert-hd5-to-geotiff:
+		python3 -m nightlightsprocessing.nightlights.hd5_to_geotiff
+
+get-vnp46a1-time-spread:
 		python3 -m nightlightsprocessing.nightlights.VNP46A1
 
-		
+
 # venv/bin/activate: requirements.txt
 # 	python3 -m $(VENV) $(VENV)
 # 	./$(PIP) install -r requirements.txt

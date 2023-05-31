@@ -1,10 +1,9 @@
 # This file assumes scripts are run from the root of the project
 INPUT_FOLDER = "/input-data/night-lights"
+H5_INPUT_FOLDER = f"{INPUT_FOLDER}/h5"
+TIF_INPUT_FOLDER = f"{INPUT_FOLDER}/tif"
 OUTPUT_FOLDER = "/output-data/night-lights"
-# INPUT_GROUND_TRUTH_FOLDER = "/input-data/ground-truth"
-# OUTPUT_GROUND_TRUTH_FOLDER = "/output-data/ground-truth"
 
-OUTPUT_PREFIX = "OUTPUT_"
 FILE_EXTENSION_TIF = ".tif"
 FILE_TYPE = "VNP46A2"
 

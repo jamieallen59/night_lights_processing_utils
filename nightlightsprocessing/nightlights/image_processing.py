@@ -112,7 +112,7 @@ def removeMissingDataFrom(array):
 
 # removing fill values and low quality pixels using the Mandatory_Quality_Flag1 mask
 def applyMandatoryQualityFlagMask(array):
-    all_mandatory_quality_flag_ntl_files = helpers.getAllFilesFrom(folder, constants.QUALITY_FLAG)
+    all_mandatory_quality_flag_ntl_files = helpers.getAllFilesFrom(constants.OUTPUT_FOLDER, constants.QUALITY_FLAG)
     first_mandatory_quality_flag_ntl_file = all_mandatory_quality_flag_ntl_files[0]
     mandatory_quality_flag = getBand(first_mandatory_quality_flag_ntl_file)
 
@@ -202,7 +202,6 @@ def main():
     hdf5_path = all_files[0]
 
     print("Creating metadata...")
-    # Create metadata (for export)
     metadata = create_metadata(
         array=final,
         transform=create_transform_vnp46a2(hdf5_path),
@@ -212,11 +211,10 @@ def main():
         crs="epsg:4326",
     )
 
-    export_name = "processed_file3.tif"
     # Export masked array to GeoTiff (no data set to np.nan in export)
-    # export_name = (
-    #     f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
-    # )
+    export_name = (
+        f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
+    )
     helpers.export_array(
         array=final,
         output_path=os.path.join(output_folder, export_name),
