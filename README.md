@@ -57,26 +57,14 @@ The idea is to:
 
 ## Usage
 
-Once you have the files you want in the input directory, there are a set of scripts available to use:
-
-1. Convert single hd5 files to geotiff: [single_hd5_to_geotiff](./scripts//satellite//single_hd5_to_geotiff.py). To run:
-
-```bash
-python scripts/satellite/single_hd5_to_geotiff.py
-```
-
-2. Convert multiple hd5 files to geotiff: [multiple_hd5_to_geotiff](./scripts//satellite//multiple_hd5_to_geotiff.py). To run:
-
-```bash
-python scripts/satellite/multiple_hd5_to_geotiff.py
-```
+TODO
 
 ## Testing
 
 To run a test file e.g:
 
 ```bash
- python -m unittest scripts.VNP46A2.tests.image_processing
+make test
 ```
 
 ## Contributing
