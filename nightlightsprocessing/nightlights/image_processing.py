@@ -8,12 +8,11 @@ from osgeo import gdal
 import os
 import rasterio
 from rasterio.transform import from_origin
+from nightlightsprocessing import helpers as globalHelpers
 
 from . import constants
 from . import helpers
 
-output_folder = f".{constants.OUTPUT_FOLDER}"
-input_folder = f".{constants.INPUT_FOLDER}"
 image_output_size = 512
 
 
@@ -158,10 +157,9 @@ def applyCloudQualityFlagMask(array):
 
 
 def main():
-    # Change from root file into given folder
-    os.chdir(constants.OUTPUT_FOLDER)
+    tif_input_path = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/"
 
-    BRDF_corrected_ntl_files = helpers.getAllFilesFrom(constants.OUTPUT_FOLDER, constants.BRDF_CORRECTED)
+    BRDF_corrected_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(tif_input_path, constants.BRDF_CORRECTED)
     BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
 
     print("Applying scale factor...")
@@ -194,10 +192,8 @@ def main():
     final = filled_data.astype("float") * 10
 
     # Get hd5 path
-    # Change from root file into given folder
-    os.chdir(input_folder)
     # Get all files in the given folder
-    all_files = helpers.getAllFilesFrom(input_folder, constants.FILE_TYPE)
+    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.TIF_INPUT_FOLDER, constants.FILE_TYPE)
     # Get the file in that folder based on the SELECTED_FILE_INDEX index
     hdf5_path = all_files[0]
 
@@ -215,9 +211,10 @@ def main():
     export_name = (
         f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
     )
+    output_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/"
     helpers.export_array(
         array=final,
-        output_path=os.path.join(output_folder, export_name),
+        output_path=os.path.join(output_path, export_name),
         metadata=metadata,
     )
 

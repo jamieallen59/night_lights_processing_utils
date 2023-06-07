@@ -5,7 +5,7 @@ from . import constants
 from .location_information import get_location_information
 import pandas as pd
 
-folder = constants.GROUND_TRUTH_FOLDER
+folder = constants.INPUT_GROUND_TRUTH_FOLDER
 
 # file info
 VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"

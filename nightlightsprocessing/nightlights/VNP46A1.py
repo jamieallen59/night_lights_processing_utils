@@ -12,14 +12,14 @@ FILE_TYPE = "VNP46A1"
 SELECTED_DATASETS = "UTC_Time"
 READ_METHOD = gdal.GA_ReadOnly
 
-def convert_to_normal_time(decimal_time):
+def _convert_to_normal_time(decimal_time):
     hours = int(decimal_time)
     minutes = int((decimal_time - hours) * 60)
     seconds = int(((decimal_time - hours) * 60 - minutes) * 60)
     time_string = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     return time_string
 
-def calculate_time_spread(first_time_decimal, last_time_decimal):
+def _calculate_time_spread(first_time_decimal, last_time_decimal):
     spread = last_time_decimal - first_time_decimal
 
     hours = int(spread)
@@ -29,7 +29,7 @@ def calculate_time_spread(first_time_decimal, last_time_decimal):
     return hours, minutes, seconds
 
 
-def getSubdatasetArray(filename):
+def _get_subdataset_as_array(filename):
     data_set = gdal.Open(filename, gdal.GA_ReadOnly)
     all_subdatasets = data_set.GetSubDatasets()
     selected_subdataset = helpers.getSubDataset(SELECTED_DATASETS, all_subdatasets)
@@ -40,36 +40,47 @@ def getSubdatasetArray(filename):
 
     return img_array
 
-def main():
-    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.INPUT_FOLDER, FILE_TYPE)
-    hdf5filename = all_files[SELECTED_FILE_INDEX]
-    hdf5filepath = f"{os.getcwd()}{constants.INPUT_FOLDER}/{hdf5filename}"
 
-    img_array = getSubdatasetArray(hdf5filepath)
+def _get_row_values(hdf5filepath):
+    img_array = _get_subdataset_as_array(hdf5filepath)
     print("Image array", img_array)
 
     # Time decimals
     first_time_decimal = img_array[0][0]  # First time in the first array
     last_time_decimal = img_array[-1][-1]  # Last time in the last array
 
-    # Normal times
-    first_time = convert_to_normal_time(first_time_decimal)
-    last_time = convert_to_normal_time(last_time_decimal)
+    # Convert decimals to normal times
+    start_time = _convert_to_normal_time(first_time_decimal)
+    end_time = _convert_to_normal_time(last_time_decimal)
 
-    print('Start time: ', first_time)
-    print('End time: ', last_time)
-
-    hours, minutes, seconds = calculate_time_spread(first_time_decimal, last_time_decimal)
-    print("Spread: %02d:%02d:%02d" % (hours, minutes, seconds))
+    # Calculate the spread between the steat and end time
+    hours, minutes, seconds = _calculate_time_spread(first_time_decimal, last_time_decimal)
     
-    # TODO: read all VNP46A1 files
+    # Round all values to 2dp
+    spread = "%02d:%02d:%02d" % (hours, minutes, seconds)
+
+    return ['FAKE DATE', start_time, end_time, spread]
+
+def main():
+    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
+    print('reading files: ', all_files)
+
+    for file in all_files:
+      hdf5filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{file}"
+
+      date, start_time, end_time, spread_time = _get_row_values(hdf5filepath)
+
+      print('date: ', date)
+      print('Start time: ', start_time)
+      print('End time: ', end_time)
+      print('Spread: ', spread_time)
+
     # TODO: write these values to columns
       # date, start time, end time, spread
 
 
 if __name__ == "__main__":
     main()
-
 
     # with rasterio.open(hdf5filename) as dataset:
     #     for science_data_set in dataset.subdatasets:
