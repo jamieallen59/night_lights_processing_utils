@@ -19,7 +19,6 @@ import os.path
 import shutil
 import sys
 from urllib.request import urlopen, Request, URLError, HTTPError
-# import chardet
 
 from io import StringIO
 
@@ -65,17 +64,13 @@ def geturl(url, token=None, out=None):
 
     if not token is None:
         headers['Authorization'] = 'Bearer ' + token
-        print('headers ----------', headers)
     try:
         import ssl
         from urllib.request import urlopen, Request, URLError, HTTPError
 
         CTX = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        # CTX = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         try:
-            print('URL ----------', url)
             request = Request(url, headers=headers)
-            print('request ----------', request)
 
             fh = urlopen(request, context=CTX)
             if out is None:
@@ -94,8 +89,6 @@ def geturl(url, token=None, out=None):
 
 
 ################################################################################
-
-
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
 
 
@@ -112,14 +105,9 @@ def sync(src, destination, token):
         import json
         files = json.loads(geturl(src + '.json', token))
     
-     
-    print('FILES CONTENT', len(files['content']))
-    # next(iter(my_dict))
-
-    # use os.path since python 2/3 both support it while pathlib is 3.4+
     ONLY_FIRST_FILE_FOR_NOW = 2
     for f in files['content'][:ONLY_FIRST_FILE_FOR_NOW]:
-        print('FILE', f)
+        print('Attempting download of:', f['name'])
         # currently we use filesize of 0 to indicate directory
         filesize = int(f['size'])
         path = os.path.join(destination, f['name'])
@@ -135,11 +123,11 @@ def sync(src, destination, token):
         else:
             try:
                 if not os.path.exists(path) or os.path.getsize(path) == 0:    # filesize FROM OS
-                    print('\ndownloading: ' , path)
+                    print('\nDownloading...' , path)
                     with open(path, 'w+b') as fh:
                         geturl(url, token, fh)
                 else:
-                    print('skipping: ', path)
+                    print('Skipping, as already downloaded here:', path)
             except IOError as e:
                 print("open `%s': %s" % (e.filename, e.strerror), file=sys.stderr)
                 sys.exit(-1)
