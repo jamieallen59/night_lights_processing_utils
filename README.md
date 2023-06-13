@@ -28,15 +28,26 @@ python3 -m venv venv
 make setup
 ```
 
-Troubleshooting:
+## Troubleshooting:
 
-- if you have the M1 chip mac you may find clashes between gdal versions. To download gdal correctly for your computer run:
+- if you have the M1 chip mac, you may find clashes between gdal versions. To download gdal correctly for your computer run:
 
 ```bash
 ARCHFLAGS="-arch arm64" pip install gdal==$(gdal-config --version)  --compile --no-cache-dir
 ```
 
 Source: https://stackoverflow.com/questions/75902777/error-running-gdal-scripts-with-python3-on-macos-12-monterrey
+
+- Running `make setup` throws an error about mpi4py
+  You may need to download mpi onto your computer. Run:
+
+```bash
+brew install openmpi
+```
+
+before running `make setup` again.
+
+## Project structure
 
 In the project structure there are directories:
 

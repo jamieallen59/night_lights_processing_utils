@@ -40,8 +40,17 @@ def _get_subdataset_as_array(filename):
 
     return img_array
 
+def _get_date_from_filepath(hdf5filepath):
+    path_from_julian_date_onwards = hdf5filepath.split(f"{FILE_TYPE}.A",1)[1]
+    julian_date = path_from_julian_date_onwards.split('.')[0]
+
+    date = helpers.get_datetime_from_julian_date(julian_date)
+
+    return date
+
 
 def _get_row_values(hdf5filepath):
+    date = _get_date_from_filepath(hdf5filepath)
     img_array = _get_subdataset_as_array(hdf5filepath)
     print("Image array", img_array)
 
@@ -59,11 +68,12 @@ def _get_row_values(hdf5filepath):
     # Round all values to 2dp
     spread = "%02d:%02d:%02d" % (hours, minutes, seconds)
 
-    return ['FAKE DATE', start_time, end_time, spread]
+    return [date, start_time, end_time, spread]
 
 def main():
     all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
     print('reading files: ', all_files)
+
 
     for file in all_files:
       hdf5filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{file}"

@@ -1,6 +1,6 @@
 import os
 import rasterio
-
+from datetime import datetime
 
 # https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
 # SDS (subdataset processing)
@@ -81,3 +81,16 @@ def export_array(array, output_path, metadata):
         output_message = print(f"Exported: {os.path.split(output_path)[-1]}")
 
     return output_message
+
+
+def get_datetime_from_julian_date(julian_date):
+    year = int(julian_date[:4])
+    day_of_year = int(julian_date[4:])
+    
+    # Create a datetime object using the year and day of year
+    full_datetime = datetime.strptime(f"{year}-{day_of_year}", "%Y-%j")
+
+    date_only = full_datetime.date()
+
+    return date_only
+

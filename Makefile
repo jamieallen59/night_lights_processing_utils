@@ -41,3 +41,6 @@ get-vnp46a1-time-spread:
 # 	$(PYTHON) app.py
 
 .PHONY: test
+
+# TODO: should turn all this to one entry point with script arguements (assuming it stays as one package)
+# https://stackoverflow.com/questions/57744466/how-to-properly-structure-internal-scripts-in-a-python-project
