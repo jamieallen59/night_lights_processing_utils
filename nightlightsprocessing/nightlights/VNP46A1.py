@@ -1,7 +1,7 @@
 import os
-
 from nightlightsprocessing import helpers as globalHelpers
 from osgeo import gdal
+import csv
 from . import constants
 from . import helpers
 
@@ -52,11 +52,18 @@ def _get_date_from_filepath(hdf5filepath):
 def _get_row_values(hdf5filepath):
     date = _get_date_from_filepath(hdf5filepath)
     img_array = _get_subdataset_as_array(hdf5filepath)
-    print("Image array", img_array)
 
     # Time decimals
     first_time_decimal = img_array[0][0]  # First time in the first array
     last_time_decimal = img_array[-1][-1]  # Last time in the last array
+
+    # If first_time_decimal > last_time_decimal, the satellite is travelling 
+    # the other way when it takes the image, so we need to reverse the variables
+    # to get the correct start/end tims and the spread between them
+    if first_time_decimal > last_time_decimal:
+        first_time_decimal = img_array[-1][-1]
+        last_time_decimal = img_array[0][0]
+
 
     # Convert decimals to normal times
     start_time = _convert_to_normal_time(first_time_decimal)
@@ -72,40 +79,64 @@ def _get_row_values(hdf5filepath):
 
 def main():
     all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
-    print('reading files: ', all_files)
+
+    # TODO: Should probably have the location name in the filename
+    filename = f".{constants.OUTPUT_FOLDER}/vnp46a1_image_created_times.csv"
+
+    # data = [
+    #     ['date', 'start_time', 'end_time', 'spread_time'],  # Header row
+    # ]
+    data = []
+    new_data = []
 
 
+    # Get existing data if it exists
+    if os.path.exists(filename):
+        # Read the existing data from the file
+        with open(filename, 'r') as file:
+            reader = csv.reader(file)
+            data = list(reader)
+
+    # Get new data
     for file in all_files:
       hdf5filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{file}"
 
       date, start_time, end_time, spread_time = _get_row_values(hdf5filepath)
 
-      print('date: ', date)
-      print('Start time: ', start_time)
-      print('End time: ', end_time)
-      print('Spread: ', spread_time)
+      new_data.append([date, start_time, end_time, spread_time])
 
-    # TODO: write these values to columns
-      # date, start time, end time, spread
+    # Iterate over each new data item, replace it with new data if it exists,
+    # otherwise add a new item to the .csv
+    for new_item in new_data:
+        date_to_check = new_item[0]
+        item_exists = False
 
+        # Iterate over each existing data item
+        for i, existing_item in enumerate(data):
+            date_index = 0
+            if existing_item[date_index] == date_to_check:
+                # Overwrite the existing item with the new item
+                data[i] = new_item
+                item_exists = True
+                break
+
+        if not item_exists:
+            # Append the new item to the existing data
+            data.append(new_item)
+
+    # Write to a .csv file
+    with open(filename, 'w', newline='') as file:
+        writer = csv.writer(file)
+
+        if os.path.exists(filename):
+            writer.writerows(data)
+        else:
+          writer.writerows([
+              ['date', 'start_time', 'end_time', 'spread_time'],  # Header row,
+              *data
+          ])
+
+        print(f"The data has been written to {filename}.")
 
 if __name__ == "__main__":
     main()
-
-    # with rasterio.open(hdf5filename) as dataset:
-    #     for science_data_set in dataset.subdatasets:
-    #         if re.search(f"{SELECTED_DATASETS}$", science_data_set):
-    #             with rasterio.open(science_data_set) as src:
-    #                 band = src.read(1)
-    #                 print("rasterio band", band)
-
-    # print("Tags", dataset.tags())
-    # print("META", dataset.meta)
-    # print("dataset", dataset)
-    # print("dataset.width", dataset.width)
-    # print("dataset.height", dataset.height)
-    # print("dataset.bounds", dataset.bounds)
-    # print("dataset.transform", dataset.transform)
-    # print("dataset upper left", dataset.transform * (0, 0))
-    # print("dataset bottom right", dataset.transform * (dataset.width, dataset.height))
-    # print("dataset.crs", dataset.crs)

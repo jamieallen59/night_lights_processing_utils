@@ -19,6 +19,7 @@ import os.path
 import shutil
 import sys
 from urllib.request import urlopen, Request, URLError, HTTPError
+import asyncio
 
 from io import StringIO
 
@@ -27,6 +28,8 @@ from io import StringIO
 # you will need to replace the following line with the location of a
 # python web client library that can make HTTPS requests to an IP address.
 USERAGENT = 'tis/download.py_1.0--' + sys.version.replace('\n','').replace('\r','')
+TILE_DESCRIPTOR = 'h26v06'
+
 
 # this is the choice of last resort, when other attempts have failed
 def getcURL(url, headers=None, out=None):
@@ -91,47 +94,77 @@ def geturl(url, token=None, out=None):
 ################################################################################
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
 
+# tile_descriptor: e.g. h26v06
+def _filter_only_tiles(all_files_content, tile_descriptor):
+    filtered = []
 
-def sync(src, destination, token):
-    '''synchronize src url with dest directory'''
+    for file_content in all_files_content:
+        file_name = file_content['name']
+
+        if tile_descriptor in file_name:
+            filtered.append(file_content)
+    return filtered
+
+
+async def sync(src, destination, token, file_details):
+    print('Attempting download of:', file_details['name'])
+    # currently we use filesize of 0 to indicate directory
+    filesize = int(file_details['size'])
+    path = os.path.join(destination, file_details['name'])
+    url = src + '/' + file_details['name']
+    if filesize == 0:                 # size FROM RESPONSE
+        try:
+            print('creating dir:', path)
+            os.mkdir(path)
+            sync(src + '/' + file_details['name'], path, token)
+        except IOError as e:
+            print("mkdir `%s': %s" % (e.filename, e.strerror), file=sys.stderr)
+            sys.exit(-1)
+    else:
+        try:
+            if not os.path.exists(path) or os.path.getsize(path) == 0:    # filesize FROM OS
+                print('\nDownloading...' , path)
+                with open(path, 'w+b') as fh:
+                    geturl(url, token, fh)
+            else:
+                print('Skipping, as already downloaded here:', path)
+        except IOError as e:
+            print("open `%s': %s" % (e.filename, e.strerror), file=sys.stderr)
+            sys.exit(-1)
+
+def _get_file_details_for_selected_tile(src, token):
     try:
         import csv
-        files = {}
         #  Reads a .csv file which represents all the data from the url given
-        files['content'] = [ f for f in csv.DictReader(StringIO(geturl('%s.csv' % src, token)), skipinitialspace=True) ]
+        all_tiles_for_one_day = [ f for f in csv.DictReader(StringIO(geturl('%s.csv' % src, token)), skipinitialspace=True) ]
+        # filter for only the tiles needed
+        file_details_for_selected_tile = _filter_only_tiles(all_tiles_for_one_day, TILE_DESCRIPTOR)
+        # Because there's only one tile image per day, so should only ever be one returned
+        first_and_only_item = file_details_for_selected_tile[0]
+
+        return first_and_only_item
 
     except ImportError:
         print('ERROR')
-        import json
-        files = json.loads(geturl(src + '.json', token))
-    
-    ONLY_FIRST_FILE_FOR_NOW = 2
-    for f in files['content'][:ONLY_FIRST_FILE_FOR_NOW]:
-        print('Attempting download of:', f['name'])
-        # currently we use filesize of 0 to indicate directory
-        filesize = int(f['size'])
-        path = os.path.join(destination, f['name'])
-        url = src + '/' + f['name']
-        if filesize == 0:                 # size FROM RESPONSE
-            try:
-                print('creating dir:', path)
-                os.mkdir(path)
-                sync(src + '/' + f['name'], path, token)
-            except IOError as e:
-                print("mkdir `%s': %s" % (e.filename, e.strerror), file=sys.stderr)
-                sys.exit(-1)
-        else:
-            try:
-                if not os.path.exists(path) or os.path.getsize(path) == 0:    # filesize FROM OS
-                    print('\nDownloading...' , path)
-                    with open(path, 'w+b') as fh:
-                        geturl(url, token, fh)
-                else:
-                    print('Skipping, as already downloaded here:', path)
-            except IOError as e:
-                print("open `%s': %s" % (e.filename, e.strerror), file=sys.stderr)
-                sys.exit(-1)
-    return 0
+
+    return None
+
+async def _download_tile_for_days(source, destination, token):
+    start_day_2014 = 364 # This = 29/10 which is the first day of ground truth readings in Uttar Pradesh
+    end_day = 365 # currently testing so using end of 2014. 
+    tasks = []
+
+    for i in range(start_day_2014, end_day + 1):
+        url = f"{source}/{i}"
+        print(f"starting task using url {url}")
+        file_details_to_download = _get_file_details_for_selected_tile(url, token)
+
+        tasks.append(asyncio.create_task(sync(url, destination, token, file_details_to_download)))
+        
+    for task in tasks:
+        result = await task
+        print(f"finished task {result}")
+
 
 def _main(argv):
     parser = argparse.ArgumentParser(prog=argv[0], description=DESC)
@@ -142,7 +175,8 @@ def _main(argv):
     # If the directory doesn't exist, create the path
     if not os.path.exists(args.destination):
         os.makedirs(args.destination)
-    return sync(args.source, args.destination, args.token)
+
+    asyncio.run(_download_tile_for_days(args.source, args.destination, args.token))
 
 if __name__ == '__main__':
     try:

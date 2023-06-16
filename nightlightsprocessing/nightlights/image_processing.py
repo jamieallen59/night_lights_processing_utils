@@ -13,12 +13,17 @@ from nightlightsprocessing import helpers as globalHelpers
 from . import constants
 from . import helpers
 
+# INFO:
+# This file should be run after the hd5 file has already been
+# converted to geotiff by hd5_to_geotiff (currently)
+
 image_output_size = 512
 
 
-# This file should be run after the hd5 file has already been converted to geotiff by hd5_to_geotiff (currently)
 def getBand(filename):
-    data_set = gdal.Open(filename, gdal.GA_ReadOnly)
+    filepath = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/{filename}"
+    print("filepath", filepath)
+    data_set = gdal.Open(filepath, gdal.GA_ReadOnly)
     raster_band = data_set.GetRasterBand(1)
     img_array = raster_band.ReadAsArray()
 
@@ -68,6 +73,11 @@ def create_transform_vnp46a2(hdf5):
         longitude_max = int(dataset.tags()["NC_GLOBAL#EastBoundingCoord"])
         latitude_min = int(dataset.tags()["NC_GLOBAL#SouthBoundingCoord"])
         latitude_max = int(dataset.tags()["NC_GLOBAL#NorthBoundingCoord"])
+        print("dataset.tags()", dataset.tags())
+        print("longitude_min", longitude_min)
+        print("longitude_max", longitude_max)
+        print("latitude_min", latitude_min)
+        print("latitude_max", latitude_max)
 
         num_rows = dataset.meta.get("height")
         num_columns = dataset.meta.get("width")
@@ -111,7 +121,9 @@ def removeMissingDataFrom(array):
 
 # removing fill values and low quality pixels using the Mandatory_Quality_Flag1 mask
 def applyMandatoryQualityFlagMask(array):
-    all_mandatory_quality_flag_ntl_files = helpers.getAllFilesFrom(constants.OUTPUT_FOLDER, constants.QUALITY_FLAG)
+    all_mandatory_quality_flag_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(
+        constants.TIF_INPUT_FOLDER, constants.QUALITY_FLAG
+    )
     first_mandatory_quality_flag_ntl_file = all_mandatory_quality_flag_ntl_files[0]
     mandatory_quality_flag = getBand(first_mandatory_quality_flag_ntl_file)
 
@@ -127,7 +139,9 @@ def applyMandatoryQualityFlagMask(array):
 
 
 def applyCloudQualityFlagMask(array):
-    cloud_mask_ntl_files = helpers.getAllFilesFrom(constants.OUTPUT_FOLDER, constants.CLOUD_MASK)
+    cloud_mask_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(
+        constants.TIF_INPUT_FOLDER, constants.CLOUD_MASK
+    )
     cloud_mask = getBand(cloud_mask_ntl_files[0])
 
     # Cloud Detection Results & Confidence Indicator: Extract QF_Cloud_Mask bits 6-7
@@ -157,9 +171,12 @@ def applyCloudQualityFlagMask(array):
 
 
 def main():
-    tif_input_path = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/"
+    BRDF_corrected_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(
+        constants.TIF_INPUT_FOLDER, constants.BRDF_CORRECTED
+    )
+    print("BRDF_corrected_ntl_files", BRDF_corrected_ntl_files)
 
-    BRDF_corrected_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(tif_input_path, constants.BRDF_CORRECTED)
+    print("BRDF_corrected_ntl_file", BRDF_corrected_ntl_files[0])
     BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
 
     print("Applying scale factor...")
@@ -191,16 +208,23 @@ def main():
     print("revert scale factor...")
     final = filled_data.astype("float") * 10
 
+    # TODO: Why does this get hd5? maybe to create the metadata?
+    # Bit weird processing the .tif files, then processing the hd5 file separately
+    # Need to change how this comes from any VNP46A2 file atm. Needs to be the specific
+    # one that created the .tif files.
+
     # Get hd5 path
     # Get all files in the given folder
-    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.TIF_INPUT_FOLDER, constants.FILE_TYPE)
+    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
     # Get the file in that folder based on the SELECTED_FILE_INDEX index
-    hdf5_path = all_files[0]
+    SELECTED_FILE_INDEX = 0
+    hd5_filename = all_files[SELECTED_FILE_INDEX]
+    hd5_filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{hd5_filename}"
 
     print("Creating metadata...")
     metadata = create_metadata(
         array=final,
-        transform=create_transform_vnp46a2(hdf5_path),
+        transform=create_transform_vnp46a2(hd5_filepath),
         driver="GTiff",
         nodata=np.nan,
         count=1,
@@ -208,9 +232,7 @@ def main():
     )
 
     # Export masked array to GeoTiff (no data set to np.nan in export)
-    export_name = (
-        f"{os.path.basename(hdf5_path)[:-3].lower().replace('.', '-')}.tif"
-    )
+    export_name = f"{os.path.basename(hd5_filepath)[:-3].lower().replace('.', '-')}.tif"
     output_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/"
     helpers.export_array(
         array=final,

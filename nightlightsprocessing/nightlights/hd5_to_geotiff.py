@@ -9,11 +9,16 @@ from nightlightsprocessing import helpers as globalHelpers
 from . import constants
 from . import helpers
 
+# INFO
+# This file uses gdal to take an hd5 file and write the constants.SELECTED_DATASETS
+# to the input-data/night-lights/XYZ.tif file
+
 # Can use gdal.GA_Update if you want to modify the file, but it takes longer.
 READ_METHOD = gdal.GA_ReadOnly
 
-# WARNING: VERY FRAGILE. BASED ON YOU'RE LOCAL ENVIRONMENT. 
+# WARNING: VERY FRAGILE. BASED ON YOU'RE LOCAL ENVIRONMENT.
 LOCAL_ENVIRONMENT_PATH_LENGTH = 190
+
 
 def _get_all_subdataset_names(subdatasets):
     subdataset_names = []
@@ -71,9 +76,7 @@ def _get_destination_filename(filename, sub_dataset_ouput_name):
     filename_without_periods = re.sub("\.", "-", filename_without_extension)
 
     # change file name
-    destination_filename = (
-        sub_dataset_ouput_name + filename_without_periods + constants.FILE_EXTENSION_TIF
-    )
+    destination_filename = sub_dataset_ouput_name + filename_without_periods + constants.FILE_EXTENSION_TIF
 
     return destination_filename
 
@@ -84,7 +87,9 @@ def _write_datasets_to_tif(datasets, filename):
 
         # Get the destination filename
         # Writes to another input folder as becomes the input for other scripts
-        destination_filename = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/" + _get_destination_filename(filename, sub_dataset_ouput_name)
+        destination_filename = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/" + _get_destination_filename(
+            filename, sub_dataset_ouput_name
+        )
         # Get command line options to pass to gdal.TranslateOptions
         translate_option_text = helpers.getCommandLineTranslateOptions(sub_dataset)
         # https://gdal.org/api/python/osgeo.gdal.html#osgeo.gdal.TranslateOptions
@@ -98,14 +103,14 @@ def _write_datasets_to_tif(datasets, filename):
 
 def main():
     # Get all files in the given folder
-    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE)
+    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
 
     for filename in all_files:
-      datasets = _get_datasets_from_hd5(filename, constants.SELECTED_DATASETS)
+        datasets = _get_datasets_from_hd5(filename, constants.SELECTED_DATASETS)
 
-      _write_datasets_to_tif(datasets, filename)
-    
-    print('Completed writing files to .tif')
+        _write_datasets_to_tif(datasets, filename)
+
+    print("Completed writing files to .tif")
 
 
 if __name__ == "__main__":

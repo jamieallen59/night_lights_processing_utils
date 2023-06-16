@@ -2,6 +2,7 @@ import os
 import rasterio
 from datetime import datetime
 
+
 # https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
 # SDS (subdataset processing)
 def getSubDataset(name, dataset):
@@ -46,30 +47,6 @@ def getCommandLineTranslateOptions(dataset):
     return EPSG + GEOREFERENCED_BOUNDS
 
 
-# Duplicated in ..helpers. Should be removed
-def filterFilesThatInclude(subString, filenames):
-    filtered = []
-
-    for filename in filenames:
-        if subString in filename:
-            filtered.append(filename)
-    return filtered
-
-
-# Duplicated in ..helpers. Should be removed
-def getAllFilesFrom(folder, filterRequirement):
-    # Get all files in that folder
-    allFiles = os.listdir(os.getcwd())
-
-    selectedFiles = filterFilesThatInclude(filterRequirement, allFiles)
-
-    if not selectedFiles:
-        raise RuntimeError(
-            f"There are no files in the directory: {folder} with the text: {filterRequirement} in the filename \nINFO: All files in {folder}: {allFiles}"
-        )
-    return selectedFiles
-
-
 def export_array(array, output_path, metadata):
     # Write numpy array to GeoTiff
     try:
@@ -86,11 +63,10 @@ def export_array(array, output_path, metadata):
 def get_datetime_from_julian_date(julian_date):
     year = int(julian_date[:4])
     day_of_year = int(julian_date[4:])
-    
+
     # Create a datetime object using the year and day of year
     full_datetime = datetime.strptime(f"{year}-{day_of_year}", "%Y-%j")
 
     date_only = full_datetime.date()
 
     return date_only
-
