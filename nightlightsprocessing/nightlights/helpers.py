@@ -3,60 +3,6 @@ import rasterio
 from datetime import datetime
 
 
-# https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
-# SDS (subdataset processing)
-def getSubDataset(name, dataset):
-    for subdataset in dataset:
-        if name in subdataset[0]:
-            return subdataset[0]
-
-
-# Should probably move out of here
-def getCommandLineTranslateOptions(dataset):
-    # collect bounding box coordinates
-    # Tile numbers are MODIS grid numbers:
-    # https://modis-land.gsfc.nasa.gov/MODLAND_grid.html
-    HorizontalTileNumber = int(dataset.GetMetadata_Dict()["HorizontalTileNumber"])
-    VerticalTileNumber = int(dataset.GetMetadata_Dict()["VerticalTileNumber"])
-
-    print("HorizontalTileNumber:", HorizontalTileNumber)
-    print("VerticalTileNumber:", VerticalTileNumber)
-
-    WestBoundCoord = (10 * HorizontalTileNumber) - 180
-    NorthBoundCoord = 90 - (10 * VerticalTileNumber)
-    EastBoundCoord = WestBoundCoord + 10
-    SouthBoundCoord = NorthBoundCoord - 10
-
-    print("WestBoundCoord:", WestBoundCoord)
-    print("NorthBoundCoord:", NorthBoundCoord)
-    print("EastBoundCoord:", EastBoundCoord)
-    print("SouthBoundCoord:", SouthBoundCoord)
-
-    WestBoundCoord = 74.33
-    NorthBoundCoord = 30
-    EastBoundCoord = 92
-    SouthBoundCoord = 20
-
-    # Must be specified to work with Google Earth
-    # https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_srs
-    EPSG = "-a_srs EPSG:4326"  # WGS84
-
-    # Must be specified to work with Google Earth
-    # https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_ullr
-    GEOREFERENCED_BOUNDS = (
-        " -a_ullr "
-        + str(WestBoundCoord)
-        + " "
-        + str(NorthBoundCoord)
-        + " "
-        + str(EastBoundCoord)
-        + " "
-        + str(SouthBoundCoord)
-    )
-
-    return EPSG + GEOREFERENCED_BOUNDS
-
-
 def export_array(array, output_path, metadata):
     # Write numpy array to GeoTiff
     try:
@@ -68,6 +14,21 @@ def export_array(array, output_path, metadata):
         output_message = print(f"Exported: {os.path.split(output_path)[-1]}")
 
     return output_message
+
+
+def _get_base_filepath(filepath):
+    return f"{os.path.basename(filepath)[:-3].lower().replace('.', '-')}"
+
+
+def get_hd5_to_tif_export_name(filepath):
+    return f"{_get_base_filepath(filepath)}.tif"
+
+
+def get_tif_to_clipped_export_name(filepath, location_name):
+    image_country = location_name.replace(" ", "-").lower()
+
+    export_name = f"{_get_base_filepath(filepath)}clipped-{image_country}.tif"
+    return export_name
 
 
 def get_datetime_from_julian_date(julian_date):

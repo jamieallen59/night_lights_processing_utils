@@ -29,6 +29,10 @@ get-vnp46a1-time-spread:
 test-clip-image:
 		python3 -m nightlightsprocessing.nightlights.clip_image
 
+read-clipped-files:
+		python3 -m nightlightsprocessing.nightlights.read_clipped_files
+
+
 
 
 # venv/bin/activate: requirements.txt

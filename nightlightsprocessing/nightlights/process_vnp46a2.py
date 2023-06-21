@@ -6,7 +6,6 @@ import os
 import re
 import rasterio as rio
 from rasterio.transform import from_origin
-from nightlightsprocessing import helpers as globalHelpers
 
 from . import constants
 from . import helpers
@@ -203,7 +202,7 @@ def process_vnp46a2(hd5_filepath):
         )
 
         # Export masked array to GeoTiff (no data set to np.nan in export)
-        export_name = f"{os.path.basename(hd5_filepath)[:-3].lower().replace('.', '-')}.tif"
+        export_name = helpers.get_hd5_to_tif_export_name(hd5_filepath)
         output_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/"
         helpers.export_array(
             array=filled_data,
