@@ -28,7 +28,6 @@ from io import StringIO
 # you will need to replace the following line with the location of a
 # python web client library that can make HTTPS requests to an IP address.
 USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r", "")
-# TODO: THIS MIGHT BE WRONG TILE. Probably should be 25.
 TILE_DESCRIPTOR = "h26v06"
 
 
@@ -159,8 +158,8 @@ def _get_file_details_for_selected_tile(src, token):
 
 
 async def _download_tile_for_days(source, destination, token):
-    start_day_2014 = 364  # This = 29/10 which is the first day of ground truth readings in Uttar Pradesh
-    end_day = 365  # currently testing so using end of 2014.
+    start_day_2014 = 305  # This = 29/10 which is the first day of ground truth readings in Uttar Pradesh
+    end_day = 320  # currently testing so using end of 2014.
     tasks = []
 
     for i in range(start_day_2014, end_day + 1):

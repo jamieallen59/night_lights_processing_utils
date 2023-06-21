@@ -5,10 +5,6 @@ import datetime as dt
 import earthpy.spatial as es
 from . import constants
 import geopandas as gpd
-from matplotlib import pyplot
-from shapely.geometry import Point
-from shapely.ops import cascaded_union
-from earthpy.spatial import crop_image
 
 # https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_image
 
@@ -192,89 +188,34 @@ def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder):
 
 
 def main():
-    # TODO: change .shp file to a specific coordinate location
-    # click point on google earth to get inital coordinate. Maybe don't even need .shp files?
-    # Then use a buffer to get the area: https://geopandas.org/en/stable/getting_started/introduction.html#Geometry-relations
-    # See if that gives the same results.
-    location_path = f"{os.getcwd()}{constants.LOCATION_INPUT_FOLDER}/lucknow-point.shp"
-    lucknowRaw = gpd.read_file(location_path)
-    # print("-------------------------------")
-    # # lucknow = lucknowRaw.set_crs("epsg:4326")
-    lucknow = lucknowRaw.to_crs(crs=4326)
+    try:
+        location_path = f"{os.getcwd()}{constants.LOCATION_INPUT_FOLDER}/lucknow-point.shp"
+        lucknowRaw = gpd.read_file(location_path)
 
-    # lucknow["area"] = lucknow.area
-    # lucknow["boundary"] = lucknow.boundary
-    # lucknow["centroid"] = lucknow.centroid
+        # here we change the crs system to 32634 to allow us to set a buffer in metres
+        # https://epsg.io/32634
+        lucknow_unit_metres = lucknowRaw.to_crs(crs=32634)
+        buffer_distance_miles = 10
+        buffer_distance_metres = buffer_distance_miles * 1609.34  # Convert miles to meters
+        buffered_lucknow = lucknow_unit_metres.buffer(buffer_distance_metres)
 
-    # print("lucknow crs_check", lucknow.crs)
-    # print("lucknow area", lucknow.area)
-    # print("lucknow boundary", lucknow.boundary)
-    # print("lucknow centroid", lucknow.centroid)
-    # print("lucknow geometry", lucknow.geometry)
-    # lucknow.plot("boundary", legend=True)
-    # lucknow.plot("area", legend=True)
-    # lucknow.explore("area", legend=False)
-    # lucknow.plot()
+        # Then change it back to allow the crop images
+        # https://epsg.io/4326
+        lucknow = buffered_lucknow.to_crs(crs=4326)
 
-    geotiff_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/vnp46a2-a2015001-h25v06-001-2020219190114.tif"
-    clip_boundary = lucknow
-    location_name = "Lucknow"
-    output_folder = f"{os.getcwd()}{constants.OUTPUT_FOLDER}"
+        geotiff_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/vnp46a2-a2014305-h26v06-001-2020214163912.tif"
 
-    # # print("geotiff_path", geotiff_path)
-    # # print("clip_boundary", clip_boundary)
-    # # print("location_name", location_name)
-    # # print("output_folder", output_folder)
+        clip_boundary = lucknow
+        location_name = "Lucknow"
+        output_folder = f"{os.getcwd()}{constants.OUTPUT_FOLDER}"
+        clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder)
 
-    # # location_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/vnp46a2-a2014305-h25v06-001-2020215000151.tif"
+    except Exception as error:
+        message = print(f"Failed: {error}\n")
+    else:
+        message = print(f"Completed")
 
-    # buffer_distance_miles = 10
-    # lucknow_coords = (26.848668, 80.8599406)
-    # point = Point(lucknow_coords)
-    # # point_gdf = gpd.GeoDataFrame(geometry=[point], crs="EPSG:4326")
-    # # buffered_gdf = point_gdf.buffer(buffer_distance_miles * 1609.34)  # Convert miles to meters
-    # # merged_buffer = cascaded_union(buffered_gdf.geometry)
-    # existing_tif_gdf = gpd.read_file(geotiff_path)
-    # buffered_geometry = point.buffer(buffer_distance_miles * 1609.34)  # Convert miles to meters
-
-    # cropped_data, cropped_meta = es.crop_image(existing_tif_gdf, [buffered_geometry])
-
-    # # cropped_gdf = gpd.overlay(
-    # #     existing_tif_gdf, gpd.GeoDataFrame(geometry=[merged_buffer], crs="EPSG:4326"), how="intersection"
-    # # )
-    # print("cropped_meta", cropped_meta)
-    # print("cropped_data", cropped_data)
-    # try:
-    #     print("TESTing image...")
-    #     with rasterio.open(location_path) as src:
-    #         print("src", src)
-    #         array = src.read(1)
-    #         print("SHAPE:", array.shape)
-
-    #         src_profile = src.profile
-    #         print("src.profile:", src_profile)
-
-    #         crop_bound = clip_boundary.to_crs(src_profile["crs"])
-    #         print("crop_bound:", crop_bound)
-    #         clip_extent = [es.extent_to_json(crop_bound)]
-    #         print("clip_extent:", clip_extent)
-
-    #         # pyplot.imshow(array, cmap="pink")
-    #         # pyplot.show()
-
-    #         # cropped_image, cropped_metadata = es.crop_image(raster=src, geoms=crop_bound)
-
-    #         # print("cropped_image", cropped_image)
-    #         # print("cropped_metadata", cropped_metadata)
-
-    # except Exception as error:
-    #     message = print(f"Failed: {error}\n")
-    # else:
-    #     message = print(f"Completed")
-
-    # return message
-
-    clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder)
+    return message
 
 
 # TODO: use crop_all in future so done all at once?

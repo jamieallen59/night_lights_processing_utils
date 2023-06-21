@@ -11,8 +11,6 @@ from nightlightsprocessing import helpers as globalHelpers
 from . import constants
 from . import helpers
 
-image_output_size = 512
-
 
 def extract_qa_bits(qa_band, start_bit, end_bit):
     """Extracts the QA bitmask values for a specified bitmask (starting
@@ -39,8 +37,8 @@ def create_metadata(array, transform, driver="GTiff", nodata=0, count=1, crs="ep
         "driver": driver,
         "dtype": array.dtype,
         "nodata": nodata,
-        "width": image_output_size,
-        "height": image_output_size,
+        "width": array.shape[1],
+        "height": array.shape[0],
         "count": count,
         "crs": crs,
         "transform": transform,
@@ -158,56 +156,63 @@ def extract_band(hd5_filepath, band_name):
 
 
 def process_vnp46a2(hd5_filepath):
-    DNB_BRDF_corrected_ntl_band = extract_band(hd5_filepath, constants.BRDF_CORRECTED)
-    mandatory_quality_flag_band = extract_band(hd5_filepath, constants.QUALITY_FLAG)
-    QF_cloud_mask_band = extract_band(hd5_filepath, constants.CLOUD_MASK)
+    try:
+        DNB_BRDF_corrected_ntl_band = extract_band(hd5_filepath, constants.BRDF_CORRECTED)
+        mandatory_quality_flag_band = extract_band(hd5_filepath, constants.QUALITY_FLAG)
+        QF_cloud_mask_band = extract_band(hd5_filepath, constants.CLOUD_MASK)
 
-    print("Applying scale factor...")
-    dnb_brdf_corrected_ntl_scaled = DNB_BRDF_corrected_ntl_band.astype("float") * 0.1
-    print("Masking for fill values...")
-    masked_for_fill_value_array = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
-    print("Masking for poor quality and no retrieval...")
-    masked_for_poor_quality_and_no_retrieval_array = applyMandatoryQualityFlagMask(
-        masked_for_fill_value_array, mandatory_quality_flag_band
-    )
-    print("Masking for clouds...")
-    result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval_array, QF_cloud_mask_band)
-    print("Masking for sea water...")
+        print("Applying scale factor...")
+        dnb_brdf_corrected_ntl_scaled = DNB_BRDF_corrected_ntl_band.astype("float") * 0.1
+        print("Masking for fill values...")
+        masked_for_fill_value_array = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
+        print("Masking for poor quality and no retrieval...")
+        masked_for_poor_quality_and_no_retrieval_array = applyMandatoryQualityFlagMask(
+            masked_for_fill_value_array, mandatory_quality_flag_band
+        )
+        print("Masking for clouds...")
+        result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval_array, QF_cloud_mask_band)
+        print("Masking for sea water...")
 
-    # Do I need to do this?
-    # print("Masking for sensor problems...")
-    # # Mask radiance for sensor problems (QF_DNB != 0)
-    # #  (0 = no problems, any number > 0 means some kind of issue)
-    # # masked_for_sensor_problems = ma.masked_where(
-    # #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
-    # # )
-    # masked_for_sensor_problems = ma.masked_where(
-    #     qf_dnb > 0, masked_for_sea_water, copy=True
-    # )
+        # Do I need to do this?
+        # print("Masking for sensor problems...")
+        # # Mask radiance for sensor problems (QF_DNB != 0)
+        # #  (0 = no problems, any number > 0 means some kind of issue)
+        # # masked_for_sensor_problems = ma.masked_where(
+        # #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
+        # # )
+        # masked_for_sensor_problems = ma.masked_where(
+        #     qf_dnb > 0, masked_for_sea_water, copy=True
+        # )
 
-    print("Filling masked values...")
-    # Set fill value to np.nan and fill masked values
-    ma.set_fill_value(result, np.nan)
-    filled_data = result.filled()
+        print("Filling masked values...")
+        # Set fill value to np.nan and fill masked values
+        ma.set_fill_value(result, np.nan)
+        filled_data = result.filled()
 
-    print("revert scale factor...")
-    final = filled_data.astype("float") * 10
+        # print("revert scale factor...")
+        # final = filled_data.astype("float") * 10
 
-    print("Creating metadata...")
-    metadata = create_metadata(
-        array=final,
-        transform=create_transform_vnp46a2(hd5_filepath),
-        driver="GTiff",
-        nodata=np.nan,
-        count=1,
-        crs="epsg:4326",
-    )
+        print("Creating metadata...")
+        metadata = create_metadata(
+            array=filled_data,
+            transform=create_transform_vnp46a2(hd5_filepath),
+            driver="GTiff",
+            nodata=np.nan,
+            count=1,
+            crs="epsg:4326",
+        )
 
-    # Export masked array to GeoTiff (no data set to np.nan in export)
-    export_name = f"{os.path.basename(hd5_filepath)[:-3].lower().replace('.', '-')}.tif"
-    output_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/"
-    helpers.export_array(
-        array=final,
-        output_path=os.path.join(output_path, export_name),
-        metadata=metadata,
-    )
+        # Export masked array to GeoTiff (no data set to np.nan in export)
+        export_name = f"{os.path.basename(hd5_filepath)[:-3].lower().replace('.', '-')}.tif"
+        output_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/"
+        helpers.export_array(
+            array=filled_data,
+            output_path=os.path.join(output_path, export_name),
+            metadata=metadata,
+        )
+    except Exception as error:
+        message = print(f"Preprocessing failed: {error}\n")
+    else:
+        message = print(f"Completed preprocessing: {os.path.basename(hd5_filepath)}\n")
+
+    return message
