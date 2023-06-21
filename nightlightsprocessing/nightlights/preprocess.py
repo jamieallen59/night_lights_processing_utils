@@ -1,34 +1,46 @@
-# import os
+import os
 
-# # TODO: TIDY UP and make relevant for this proj
-# # import warnings
+# import warnings
 # import glob
-# import viirs
+from nightlightsprocessing import helpers as globalHelpers
+import sys
 
-# # Set options
-# # warnings.simplefilter("ignore")
+from . import constants
+from . import process_vnp46a2
 
-# # -------------------------USER-DEFINED VARIABLES---------------------------- #
-# # Define path to folder containing input VNP46A2 HDF5 files
-# hdf5_input_folder = os.path.join("02-raw-data", "hdf", "south-korea", "vnp46a2")
+# -------------------------DATA PREPROCESSING-------------------------------- #
+# Preprocess each HDF5 file (extract bands, mask for fill values,
+#  poor-quality, no retrieval, clouds, sea water, fill masked values
+#  with NaN, export to GeoTiff)
 
-# # Defne path to output folder to store exported GeoTiff files
-# geotiff_output_folder = os.path.join("03-processed-data", "raster", "south-korea", "vnp46a2-grid")
 
-# # -------------------------DATA PREPROCESSING-------------------------------- #
-# # Preprocess each HDF5 file (extract bands, mask for fill values,
-# #  poor-quality, no retrieval, clouds, sea water, fill masked values
-# #  with NaN, export to GeoTiff)
-# hdf5_files = glob.glob(os.path.join(hdf5_input_folder, "*.h5"))
-# processed_files = 0
-# total_files = len(hdf5_files)
-# for hdf5 in hdf5_files:
-#     viirs.preprocess_vnp46a2(hdf5_path=hdf5, output_folder=geotiff_output_folder)
-#     processed_files += 1
-#     print(f"Preprocessed file: {processed_files} of {total_files}\n\n")
+def _main():
+    # Is this better than a helper?
+    # hdf5_files = glob.glob(os.path.join(hdf5_input_folder, "*.h5"))
+    processed_files = 0
+    all_hd5_files = globalHelpers.getAllFilesFromFolderWithFilename(
+        constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2
+    )
+    total_files = len(all_hd5_files)
+    print("\n")
+    print(f"Total files to process: {total_files}\n")
 
-# # -------------------------SCRIPT COMPLETION--------------------------------- #
-# print("\n")
-# print("-" * (18 + len(os.path.basename(__file__))))
-# print(f"Completed script: {os.path.basename(__file__)}")
-# print("-" * (18 + len(os.path.basename(__file__))))
+    for filename in all_hd5_files:
+        filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{filename}"
+
+        process_vnp46a2.process_vnp46a2(filepath)
+        processed_files += 1
+        print(f"\nPreprocessed file: {processed_files} of {total_files}\n")
+
+    # -------------------------SCRIPT COMPLETION--------------------------------- #
+    print("\n")
+    print("-" * (18 + len(os.path.basename(__file__))))
+    print(f"Completed script: {os.path.basename(__file__)}")
+    print("-" * (18 + len(os.path.basename(__file__))))
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(_main())
+    except KeyboardInterrupt:
+        sys.exit(-1)

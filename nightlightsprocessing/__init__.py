@@ -1,2 +1,2 @@
-from .nightlights import image_processing
+from .nightlights import preprocess
 from .groundtruth import location_information

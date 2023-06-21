@@ -19,13 +19,23 @@ def getCommandLineTranslateOptions(dataset):
     HorizontalTileNumber = int(dataset.GetMetadata_Dict()["HorizontalTileNumber"])
     VerticalTileNumber = int(dataset.GetMetadata_Dict()["VerticalTileNumber"])
 
-    # print("HorizontalTileNumber:", HorizontalTileNumber)
-    # print("VerticalTileNumber:", VerticalTileNumber)
+    print("HorizontalTileNumber:", HorizontalTileNumber)
+    print("VerticalTileNumber:", VerticalTileNumber)
 
     WestBoundCoord = (10 * HorizontalTileNumber) - 180
     NorthBoundCoord = 90 - (10 * VerticalTileNumber)
     EastBoundCoord = WestBoundCoord + 10
     SouthBoundCoord = NorthBoundCoord - 10
+
+    print("WestBoundCoord:", WestBoundCoord)
+    print("NorthBoundCoord:", NorthBoundCoord)
+    print("EastBoundCoord:", EastBoundCoord)
+    print("SouthBoundCoord:", SouthBoundCoord)
+
+    WestBoundCoord = 74.33
+    NorthBoundCoord = 30
+    EastBoundCoord = 92
+    SouthBoundCoord = 20
 
     # Must be specified to work with Google Earth
     # https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_srs

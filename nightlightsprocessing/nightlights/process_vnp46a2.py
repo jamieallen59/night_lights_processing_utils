@@ -2,32 +2,16 @@
 
 import numpy as np
 import numpy.ma as ma
-
-# import matplotlib.pyplot as plt
-from osgeo import gdal
 import os
-import rasterio
+import re
+import rasterio as rio
 from rasterio.transform import from_origin
 from nightlightsprocessing import helpers as globalHelpers
 
 from . import constants
 from . import helpers
 
-# INFO:
-# This file should be run after the hd5 file has already been
-# converted to geotiff by hd5_to_geotiff (currently)
-
 image_output_size = 512
-
-
-def getBand(filename):
-    filepath = f"{os.getcwd()}{constants.TIF_INPUT_FOLDER}/{filename}"
-    print("filepath", filepath)
-    data_set = gdal.Open(filepath, gdal.GA_ReadOnly)
-    raster_band = data_set.GetRasterBand(1)
-    img_array = raster_band.ReadAsArray()
-
-    return img_array
 
 
 def extract_qa_bits(qa_band, start_bit, end_bit):
@@ -63,24 +47,24 @@ def create_metadata(array, transform, driver="GTiff", nodata=0, count=1, crs="ep
     }
 
 
-def create_transform_vnp46a2(hdf5):
+def create_transform_vnp46a2(hdf5_filepath):
     """Creates a geographic transform for a VNP46A2 HDF5 file,
     based on longitude bounds, latitude bounds, and cell size.
     """
     # Extract bounding box from top-level dataset
-    with rasterio.open(hdf5) as dataset:
-        longitude_min = int(dataset.tags()["NC_GLOBAL#WestBoundingCoord"])
-        longitude_max = int(dataset.tags()["NC_GLOBAL#EastBoundingCoord"])
-        latitude_min = int(dataset.tags()["NC_GLOBAL#SouthBoundingCoord"])
-        latitude_max = int(dataset.tags()["NC_GLOBAL#NorthBoundingCoord"])
-        print("dataset.tags()", dataset.tags())
-        print("longitude_min", longitude_min)
-        print("longitude_max", longitude_max)
-        print("latitude_min", latitude_min)
-        print("latitude_max", latitude_max)
+    with rio.open(hdf5_filepath) as dataset:
+        longitude_min = int(dataset.tags()["WestBoundingCoord"])
+        longitude_max = int(dataset.tags()["EastBoundingCoord"])
+        latitude_min = int(dataset.tags()["SouthBoundingCoord"])
+        latitude_max = int(dataset.tags()["NorthBoundingCoord"])
 
-        num_rows = dataset.meta.get("height")
-        num_columns = dataset.meta.get("width")
+        # Extract number of row and columns from first
+        # Science Data Set (subdataset/band)
+        with rio.open(dataset.subdatasets[0]) as band:
+            num_rows, num_columns = (
+                band.meta.get("height"),
+                band.meta.get("width"),
+            )
 
     # Define transform (top-left corner, cell size)
     transform = from_origin(
@@ -89,7 +73,6 @@ def create_transform_vnp46a2(hdf5):
         (longitude_max - longitude_min) / num_columns,
         (latitude_max - latitude_min) / num_rows,
     )
-    print("transform", transform)
 
     return transform
 
@@ -120,32 +103,21 @@ def removeMissingDataFrom(array):
 
 
 # removing fill values and low quality pixels using the Mandatory_Quality_Flag1 mask
-def applyMandatoryQualityFlagMask(array):
-    all_mandatory_quality_flag_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(
-        constants.TIF_INPUT_FOLDER, constants.QUALITY_FLAG
-    )
-    first_mandatory_quality_flag_ntl_file = all_mandatory_quality_flag_ntl_files[0]
-    mandatory_quality_flag = getBand(first_mandatory_quality_flag_ntl_file)
-
+def applyMandatoryQualityFlagMask(array, mandatory_quality_flag_band):
     masked_for_fill_values = ma.masked_where(
-        mandatory_quality_flag == mandatory_quality_flag_fill_value, array, copy=True
+        mandatory_quality_flag_band == mandatory_quality_flag_fill_value, array, copy=True
     )
 
     masked_for_poor_quality = ma.masked_where(
-        mandatory_quality_flag == mandatory_quality_flag_poor_quality_value, masked_for_fill_values, copy=True
+        mandatory_quality_flag_band == mandatory_quality_flag_poor_quality_value, masked_for_fill_values, copy=True
     )
 
     return masked_for_poor_quality
 
 
-def applyCloudQualityFlagMask(array):
-    cloud_mask_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(
-        constants.TIF_INPUT_FOLDER, constants.CLOUD_MASK
-    )
-    cloud_mask = getBand(cloud_mask_ntl_files[0])
-
+def applyCloudQualityFlagMask(array, QF_cloud_mask_band):
     # Cloud Detection Results & Confidence Indicator: Extract QF_Cloud_Mask bits 6-7
-    cloud_detection_bitmask = extract_qa_bits(qa_band=cloud_mask, start_bit=6, end_bit=7)
+    cloud_detection_bitmask = extract_qa_bits(qa_band=QF_cloud_mask_band, start_bit=6, end_bit=7)
     masked_for_probably_cloudy = ma.masked_where(
         cloud_detection_bitmask
         == cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_probably_cloudy,
@@ -160,7 +132,7 @@ def applyCloudQualityFlagMask(array):
     )
 
     # Land/Water Background: Extract QF_Cloud_Mask bits 1-3
-    land_water_bitmask = extract_qa_bits(qa_band=cloud_mask, start_bit=1, end_bit=3)
+    land_water_bitmask = extract_qa_bits(qa_band=QF_cloud_mask_band, start_bit=1, end_bit=3)
     masked_for_sea_water = ma.masked_where(
         land_water_bitmask == cloud_mask_quality_flag_land_water_background_sea_water,
         masked_for_confident_cloudy,
@@ -170,23 +142,36 @@ def applyCloudQualityFlagMask(array):
     return masked_for_sea_water
 
 
-def main():
-    BRDF_corrected_ntl_files = globalHelpers.getAllFilesFromFolderWithFilename(
-        constants.TIF_INPUT_FOLDER, constants.BRDF_CORRECTED
-    )
-    print("BRDF_corrected_ntl_files", BRDF_corrected_ntl_files)
+def extract_band(hd5_filepath, band_name):
+    if band_name not in constants.BAND_NAMES:
+        raise ValueError(f"Invalid band name. Must be one of the following: {constants.BAND_NAMES}")
 
-    print("BRDF_corrected_ntl_file", BRDF_corrected_ntl_files[0])
-    BRDF_corrected_ntl_file = getBand(BRDF_corrected_ntl_files[0])
+    # Open top-level dataset, loop through Science Data Sets (subdatasets),
+    #  and extract specified band
+    with rio.open(hd5_filepath) as dataset:
+        for science_data_set in dataset.subdatasets:
+            if re.search(f"{band_name}$", science_data_set):
+                with rio.open(science_data_set) as src:
+                    band = src.read(1)
+
+    return band
+
+
+def process_vnp46a2(hd5_filepath):
+    DNB_BRDF_corrected_ntl_band = extract_band(hd5_filepath, constants.BRDF_CORRECTED)
+    mandatory_quality_flag_band = extract_band(hd5_filepath, constants.QUALITY_FLAG)
+    QF_cloud_mask_band = extract_band(hd5_filepath, constants.CLOUD_MASK)
 
     print("Applying scale factor...")
-    dnb_brdf_corrected_ntl_scaled = BRDF_corrected_ntl_file.astype("float") * 0.1
+    dnb_brdf_corrected_ntl_scaled = DNB_BRDF_corrected_ntl_band.astype("float") * 0.1
     print("Masking for fill values...")
-    masked_for_fill_value = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
+    masked_for_fill_value_array = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
     print("Masking for poor quality and no retrieval...")
-    masked_for_poor_quality_and_no_retrieval = applyMandatoryQualityFlagMask(masked_for_fill_value)
+    masked_for_poor_quality_and_no_retrieval_array = applyMandatoryQualityFlagMask(
+        masked_for_fill_value_array, mandatory_quality_flag_band
+    )
     print("Masking for clouds...")
-    result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval)
+    result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval_array, QF_cloud_mask_band)
     print("Masking for sea water...")
 
     # Do I need to do this?
@@ -208,19 +193,6 @@ def main():
     print("revert scale factor...")
     final = filled_data.astype("float") * 10
 
-    # TODO: Why does this get hd5? maybe to create the metadata?
-    # Bit weird processing the .tif files, then processing the hd5 file separately
-    # Need to change how this comes from any VNP46A2 file atm. Needs to be the specific
-    # one that created the .tif files.
-
-    # Get hd5 path
-    # Get all files in the given folder
-    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
-    # Get the file in that folder based on the SELECTED_FILE_INDEX index
-    SELECTED_FILE_INDEX = 0
-    hd5_filename = all_files[SELECTED_FILE_INDEX]
-    hd5_filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{hd5_filename}"
-
     print("Creating metadata...")
     metadata = create_metadata(
         array=final,
@@ -239,7 +211,3 @@ def main():
         output_path=os.path.join(output_path, export_name),
         metadata=metadata,
     )
-
-
-if __name__ == "__main__":
-    main()
