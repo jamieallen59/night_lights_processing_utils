@@ -3,6 +3,14 @@ import rasterio
 from datetime import datetime
 
 
+# https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/
+# SDS (subdataset processing)
+def getSubDataset(name, dataset):
+    for subdataset in dataset:
+        if name in subdataset[0]:
+            return subdataset[0]
+
+
 def export_array(array, output_path, metadata):
     # Write numpy array to GeoTiff
     try:

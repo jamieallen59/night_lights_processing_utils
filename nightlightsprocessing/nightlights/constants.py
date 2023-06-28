@@ -27,3 +27,5 @@ BAND_NAMES = [
 ]
 # All available datasets for VNP46A2 listed on page 16 here:
 # https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
+
+DATETIME_FORMAT = "%Y-%m-%d"
