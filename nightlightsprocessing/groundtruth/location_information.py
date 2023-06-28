@@ -17,6 +17,7 @@ TO_DATE_COLUMN = "To date"
 # Filter requirements. These should probably be higher up somewhere?
 # STARTED_BEFORE_DATE = "2014-12-31"  # starting with just the ones that started before in 2014
 
+
 def _read_location_information_csv():
     location_information_files = helpers.getAllFilesFromFolderWithFilename(folder, LOCATION_INFORMATION_FILENAME)
     location_information_file = location_information_files[0]
@@ -29,8 +30,17 @@ def _read_location_information_csv():
     return location_information_dataframe
 
 
-def _get_location_information_filtered_by(location_information_dataframe, state):
+def _get_location_information_filtered_by_state(location_information_dataframe, state):
     filtered_df = location_information_dataframe[location_information_dataframe[STATE_COLUMN] == state]
+    filtered_df = helpers.drop_filtered_table_index(filtered_df)
+
+    return filtered_df
+
+
+def _get_location_information_filtered_by_location(location_information_dataframe, indian_state_location):
+    filtered_df = location_information_dataframe[
+        location_information_dataframe[LOCATION_NAME_COLUMN].str.contains(indian_state_location)
+    ]
     filtered_df = helpers.drop_filtered_table_index(filtered_df)
 
     return filtered_df
@@ -52,12 +62,12 @@ def _get_locations_that_started_in(location_information_dataframe, started_befor
     return filtered_df
 
 
-
-def get_location_information(indian_state):
+def get_location_information(indian_state, indian_state_location):
     location_information_dataframe = _read_location_information_csv()
 
     # Filtering
-    filtered_df = _get_location_information_filtered_by(location_information_dataframe, indian_state)
+    filtered_df = _get_location_information_filtered_by_state(location_information_dataframe, indian_state)
+    filtered_df = _get_location_information_filtered_by_location(location_information_dataframe, indian_state_location)
     # filtered_df = _get_locations_that_started_in(filtered_df, STARTED_BEFORE_DATE)
 
     return filtered_df

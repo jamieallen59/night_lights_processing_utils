@@ -128,20 +128,27 @@ def _check_items_are_equal(new_item, existing_item):
         return False
 
 
+# Take my old data
+# check each item against the new data
+# if the new item exists in the old item, overwrite it
+# if not, add it to the old data
+
+
 def _merge_new_and_existing_data(filename):
     new_data = _get_vnp46a1_time_data()
 
     # Read the existing data from the file
     with open(filename, "r") as file:
         reader = csv.reader(file)
-        existing_data = list(reader)
+        data = list(reader)
 
     for new_item in new_data:
         date_column_index = 0
         item_exists = False
 
         # Iterate over each existing data item
-        for i, existing_item in enumerate(existing_data):
+        # overwrite with new values, if they exist
+        for i, existing_item in enumerate(data):
             is_header = existing_item[date_column_index] == "date"
 
             if not is_header:
@@ -149,10 +156,14 @@ def _merge_new_and_existing_data(filename):
 
                 if item_exists:
                     # Overwrite the existing item with the new item
-                    existing_data[i] = new_item
+                    data[i] = new_item
                     break
+
+        if not item_exists:
+            data.append(new_item)
+
     print("Overwriting old data with new data")
-    return existing_data
+    return data
 
 
 def _write_to(data, filename):
