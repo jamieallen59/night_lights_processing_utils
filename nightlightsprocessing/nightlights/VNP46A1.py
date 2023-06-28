@@ -35,6 +35,14 @@ def _calculate_time_spread(first_time_decimal, last_time_decimal):
 
 
 def _get_subdataset_as_array(filename):
+    # data_set = gdal.Open(filename, gdal.GA_ReadOnly)
+    # all_subdatasets = data_set.GetSubDatasets()
+    # selected_subdataset = helpers.getSubDataset(SELECTED_DATASET, all_subdatasets)
+
+    # sub_dataset = gdal.Open(selected_subdataset, READ_METHOD)
+    # raster_band = sub_dataset.GetRasterBand(1)
+    # img_array = raster_band.ReadAsArray()
+
     # Open top-level dataset, loop through Science Data Sets (subdatasets),
     #  and extract specified band
     with rio.open(filename) as dataset:
@@ -44,6 +52,8 @@ def _get_subdataset_as_array(filename):
                     band = src.read(1)
 
     return band
+
+    # return img_array
 
 
 def _get_date_from_filepath(hdf5filepath):
@@ -97,27 +107,28 @@ def _get_vnp46a1_time_data():
     return data
 
 
+def parse_date(date_str):
+    if isinstance(date_str, datetime.date):
+        return date_str
+    return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+
+
 # Check they're equal by their date field
 def _check_items_are_equal(new_item, existing_item):
     date_column_index = 0
     new_item_date = new_item[date_column_index]
     existing_item_date = existing_item[date_column_index]
 
-    # Check it's a date or a string
-    # Necessary as some dates come back as non-datetime types from the .csv
-    if isinstance(existing_item_date, datetime.date):
-        if existing_item_date == new_item_date:
-            return True
+    # Necessary as dates come back as strings or datetime.date's from the .csv
+    existing_item_date_parsed = parse_date(existing_item_date)
+
+    if existing_item_date_parsed == new_item_date:
+        return True
     else:
-        # It's a string
-        datetime_old_item = datetime.datetime.strptime(existing_item_date, "%Y-%m-%d").date()
-        if datetime_old_item == new_item_date:
-            return True
-
-    return False
+        return False
 
 
-def _append_new_data_to(filename):
+def _merge_new_and_existing_data(filename):
     new_data = _get_vnp46a1_time_data()
 
     # Read the existing data from the file
@@ -140,29 +151,42 @@ def _append_new_data_to(filename):
                     # Overwrite the existing item with the new item
                     existing_data[i] = new_item
                     break
+    print("Overwriting old data with new data")
+    return existing_data
 
 
-def _write_new_data_to(filename):
-    new_data = _get_vnp46a1_time_data()
-
+def _write_to(data, filename):
     # Write to a .csv file
     with open(filename, "w", newline="") as file:
         writer = csv.writer(file)
-        header_row = ["date", "start_time", "end_time", "spread_time"]
-        writer.writerows([header_row, *new_data])
+        writer.writerows(data)
 
 
 def main():
     # TODO: Should probably have the location name in the filename
     filename = f".{constants.OUTPUT_FOLDER}/vnp46a1_image_created_times.csv"
+    header_row = ["date", "start_time", "end_time", "spread_time"]
+
     file_already_exists = os.path.exists(filename)
 
     if file_already_exists:
-        _append_new_data_to(filename)
-    else:
-        _write_new_data_to(filename)
+        new_data = _merge_new_and_existing_data(filename)
+        # remove the header to allow sorting
+        new_data_without_header = new_data[1:]
+        sorted_data = sorted(new_data_without_header, key=lambda row: parse_date(row[0]))
 
-        print(f"The data has been written to {filename}.")
+        # Add the header row back to the sorted rows
+        sorted_data.insert(0, header_row)
+        _write_to(sorted_data, filename)
+    else:
+        # Write new data
+        new_data = _get_vnp46a1_time_data()
+        sorted_data = sorted(new_data, key=lambda row: parse_date(row[0]))
+
+        data = [header_row, *sorted_data]
+        _write_to(data, filename)
+
+    print(f"The data has been written to {filename}.")
 
 
 if __name__ == "__main__":
