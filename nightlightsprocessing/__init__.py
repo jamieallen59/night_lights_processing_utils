@@ -1,2 +1,2 @@
 from .nightlights import preprocess
-from .groundtruth import location_information
+from .groundtruth import get_ESMI_location_information

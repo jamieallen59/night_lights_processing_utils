@@ -8,10 +8,17 @@ from . import constants
 from . import helpers
 import datetime
 
-# This file is currently used to measure the spread of time between
-# the first and last points the satellite went over an area
-SELECTED_FILE_INDEX = 0
-FILE_TYPE = "VNP46A1"
+# This file reads all the VNP46A1 files you provide it and reads the
+# UTC_Time band of those images.
+# See Table 3: https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
+# It creates a .csv file wth the dates, start and end times plus the spread between those times
+
+# Variable
+OUTPUT_FILENAME = "vnp46a1_image_created_times"
+OUTPUT_FILEPATH = f".{constants.OUTPUT_FOLDER}/{OUTPUT_FILENAME}.csv"
+
+# Constants
+FILE_TYPE = "VNP46A1"  # It only works with VNP46A1, as these have the UTC_Time property
 SELECTED_DATASET = "UTC_Time"
 READ_METHOD = gdal.GA_ReadOnly
 
@@ -35,16 +42,8 @@ def _calculate_time_spread(first_time_decimal, last_time_decimal):
 
 
 def _get_subdataset_as_array(filename):
-    # data_set = gdal.Open(filename, gdal.GA_ReadOnly)
-    # all_subdatasets = data_set.GetSubDatasets()
-    # selected_subdataset = helpers.getSubDataset(SELECTED_DATASET, all_subdatasets)
-
-    # sub_dataset = gdal.Open(selected_subdataset, READ_METHOD)
-    # raster_band = sub_dataset.GetRasterBand(1)
-    # img_array = raster_band.ReadAsArray()
-
     # Open top-level dataset, loop through Science Data Sets (subdatasets),
-    #  and extract specified band
+    # and extract specified band
     with rio.open(filename) as dataset:
         for science_data_set in dataset.subdatasets:
             if re.search(f"{SELECTED_DATASET}$", science_data_set):
@@ -52,8 +51,6 @@ def _get_subdataset_as_array(filename):
                     band = src.read(1)
 
     return band
-
-    # return img_array
 
 
 def _get_date_from_filepath(hdf5filepath):
@@ -110,7 +107,8 @@ def _get_vnp46a1_time_data():
 def parse_date(date_str):
     if isinstance(date_str, datetime.date):
         return date_str
-    return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    # return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    return datetime.datetime.strptime(date_str, "%d/%m/%Y").date()
 
 
 # Check they're equal by their date field
@@ -126,12 +124,6 @@ def _check_items_are_equal(new_item, existing_item):
         return True
     else:
         return False
-
-
-# Take my old data
-# check each item against the new data
-# if the new item exists in the old item, overwrite it
-# if not, add it to the old data
 
 
 def _merge_new_and_existing_data(filename):
@@ -174,30 +166,28 @@ def _write_to(data, filename):
 
 
 def main():
-    # TODO: Should probably have the location name in the filename
-    filename = f".{constants.OUTPUT_FOLDER}/vnp46a1_image_created_times.csv"
-    header_row = ["date", "start_time", "end_time", "spread_time"]
+    header_row = ["Date", "start_time", "end_time", "start_end_spread_time"]
 
-    file_already_exists = os.path.exists(filename)
+    file_already_exists = os.path.exists(OUTPUT_FILEPATH)
 
     if file_already_exists:
-        new_data = _merge_new_and_existing_data(filename)
+        new_data = _merge_new_and_existing_data(OUTPUT_FILEPATH)
         # remove the header to allow sorting
         new_data_without_header = new_data[1:]
         sorted_data = sorted(new_data_without_header, key=lambda row: parse_date(row[0]))
 
         # Add the header row back to the sorted rows
         sorted_data.insert(0, header_row)
-        _write_to(sorted_data, filename)
+        _write_to(sorted_data, OUTPUT_FILEPATH)
     else:
         # Write new data
         new_data = _get_vnp46a1_time_data()
         sorted_data = sorted(new_data, key=lambda row: parse_date(row[0]))
 
         data = [header_row, *sorted_data]
-        _write_to(data, filename)
+        _write_to(data, OUTPUT_FILEPATH)
 
-    print(f"The data has been written to {filename}.")
+    print(f"The data has been written to {OUTPUT_FILEPATH}.")
 
 
 if __name__ == "__main__":

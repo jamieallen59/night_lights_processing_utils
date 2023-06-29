@@ -2,7 +2,7 @@ import sys, getopt, os
 
 from nightlightsprocessing import helpers
 from . import constants
-from .location_information import get_location_information
+from .get_ESMI_location_information import get_location_information
 import pandas as pd
 
 folder = constants.INPUT_GROUND_TRUTH_FOLDER
@@ -15,6 +15,7 @@ LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
 
 
+# MAY WANT THIS FILTERING FOR create_training_dataset_of_low_reliability_grids
 def get_hours_between(start_hours, end_hours):
     hours = []
 
@@ -28,6 +29,7 @@ def get_hours_between(start_hours, end_hours):
             hours.append(hour)
 
     return hours
+
 
 def get_minutes_between(start_minutes, end_minutes):
     minutes = []
@@ -43,6 +45,7 @@ def get_minutes_between(start_minutes, end_minutes):
 
     return minutes
 
+
 def get_hours_query_string(hours):
     query_parts = []
 
@@ -54,51 +57,51 @@ def get_hours_query_string(hours):
 
     return query_string
 
+
 def get_minutes_query_columns(minutes):
     query_array = []
 
     for minute in minutes:
         query = f"Min {minute}"
         query_array.append(query)
-   
+
     return query_array
 
 
 def read_voltage_data_csv(year, start_datetime, end_datetime):
-     
     filename = f"{VOLTAGE_DATA_FILENAME} {year}"
-    print('Looking for file: ', filename)
+    print("Looking for file: ", filename)
     voltage_data_files = helpers.getAllFilesFromFolderWithFilename(folder, filename)
     voltage_data_file = voltage_data_files[0]
     voltage_data_file_path = f"{os.getcwd()}{folder}/{voltage_data_file}"
-    print('Reading CSV file: ', voltage_data_file_path)
+    print("Reading CSV file: ", voltage_data_file_path)
 
     # Convert the dates to datetime objects
-    voltage_dataframe = pd.read_csv(voltage_data_file_path, parse_dates=['Date'], dayfirst=True)
+    voltage_dataframe = pd.read_csv(voltage_data_file_path, parse_dates=["Date"], dayfirst=True)
 
     if start_datetime is not None and end_datetime is not None:
-      print(f'Filter data between {start_datetime} and {end_datetime}')
+        print(f"Filter data between {start_datetime} and {end_datetime}")
 
-      start_hours = start_datetime.time().hour
-      start_minute = start_datetime.time().minute
-      end_hours = end_datetime.time().hour
-      end_minute = end_datetime.time().minute
+        start_hours = start_datetime.time().hour
+        start_minute = start_datetime.time().minute
+        end_hours = end_datetime.time().hour
+        end_minute = end_datetime.time().minute
 
-      all_hours_between_start_and_end = get_hours_between(start_hours, end_hours)
-      all_minutes_between_start_and_end = get_minutes_between(start_minute, end_minute)
+        all_hours_between_start_and_end = get_hours_between(start_hours, end_hours)
+        all_minutes_between_start_and_end = get_minutes_between(start_minute, end_minute)
 
-      # hours and minutes filtering done differently as hours is a column with a 
-      # set of row values whereas minutes are their own column labels.
+        # hours and minutes filtering done differently as hours is a column with a
+        # set of row values whereas minutes are their own column labels.
 
-      # filter the table by the hours selected
-      hours_query_string = get_hours_query_string(all_hours_between_start_and_end)
-      voltage_dataframe = voltage_dataframe.query(hours_query_string)
+        # filter the table by the hours selected
+        hours_query_string = get_hours_query_string(all_hours_between_start_and_end)
+        voltage_dataframe = voltage_dataframe.query(hours_query_string)
 
-      # filter the table by the minutes
-      default_columns = ['Location name', 'Date', 'Hour']
-      minutes_query_columns = get_minutes_query_columns(all_minutes_between_start_and_end)
-      minutes_query_columns = default_columns + minutes_query_columns
-      voltage_dataframe = voltage_dataframe[minutes_query_columns]
+        # filter the table by the minutes
+        default_columns = ["Location name", "Date", "Hour"]
+        minutes_query_columns = get_minutes_query_columns(all_minutes_between_start_and_end)
+        minutes_query_columns = default_columns + minutes_query_columns
+        voltage_dataframe = voltage_dataframe[minutes_query_columns]
 
     return voltage_dataframe
 
@@ -113,24 +116,24 @@ def filter_by_state(data, location_names):
 
 def main(argv):
     # TODO remove hardcoding
-    year = '2014'
+    year = "2014"
     start_datetime = None
     end_datetime = None
 
     try:
-      opts, args = getopt.getopt(argv,"hs:e:",["startdatetime=","enddatetime="])
+        opts, args = getopt.getopt(argv, "hs:e:", ["startdatetime=", "enddatetime="])
     except getopt.GetoptError:
-      print ('Possible options: -s <startdatetime> -e <enddatetime>')
-      sys.exit(2)
+        print("Possible options: -s <startdatetime> -e <enddatetime>")
+        sys.exit(2)
 
     for opt, arg in opts:
-      if opt == '-h':
-        print ('Possible options: -s <startdatetime> -e <enddatetime>')
-        sys.exit()
-      elif opt in ("-s", "--startdatetime"):
-        start_datetime = pd.to_datetime(arg)
-      elif opt in ("-e", "--enddatetime"):
-        end_datetime = pd.to_datetime(arg)
+        if opt == "-h":
+            print("Possible options: -s <startdatetime> -e <enddatetime>")
+            sys.exit()
+        elif opt in ("-s", "--startdatetime"):
+            start_datetime = pd.to_datetime(arg)
+        elif opt in ("-e", "--enddatetime"):
+            end_datetime = pd.to_datetime(arg)
 
     # Maybe should come from Command line?
     indian_state = "Uttar pradesh"
@@ -139,7 +142,7 @@ def main(argv):
 
     # Filtering
     filtered_df = filter_by_state(voltage_data, location_names)
-    
+
     # TODO
     # split the data by area
     # split the data by days

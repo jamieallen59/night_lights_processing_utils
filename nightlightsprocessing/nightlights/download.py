@@ -158,12 +158,12 @@ def _get_file_details_for_selected_tile(src, token):
 
 
 async def _download_tile_for_days(source, destination, token):
-    start_day_2014 = 305  # This = 29/10 which is the first day of ground truth readings in Uttar Pradesh
-    end_day = 365  # currently testing.
+    start_day_number = 0
+    end_day = 365
     tasks = []
 
-    for i in range(start_day_2014, end_day + 1):
-        url = f"{source}/{i}"
+    for i in range(start_day_number, end_day + 1):
+        url = f"{source}/{i:03}"
         print(f"starting task using url {url}")
         file_details_to_download = _get_file_details_for_selected_tile(url, token)
 
