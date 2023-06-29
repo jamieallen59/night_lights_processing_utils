@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+# This script processes VNP46A2 datasets, exatrcting the various masks from the datasets
+# and writing them to .tif files.
+
+
+from nightlightsprocessing import helpers as globalHelpers
+import sys
 import numpy as np
 import numpy.ma as ma
 import os
@@ -9,6 +15,27 @@ from rasterio.transform import from_origin
 
 from . import constants
 from . import helpers
+
+################################################################################
+
+#  Variables
+
+# Masks
+# Valid ranges and 'fill value' all defined here:
+# https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
+# The 'fill value' is a value used to show that data is missing for that pixel.
+# The variables below are essentially config to adjust how your images are processed.
+dnb_brdf_corrected_ntl_fill_value = 6553.5
+MANDATORY_QUALITY_FLAG_FILL_VALUE = 255
+MANDATORY_QUALITY_FLAG_POOR_QUALITY_VALUE = 2
+# Need to validate this as value in docs says '10'
+CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_PROBABLY_CLOUDY = 2
+# Need to validate this as value in docs says '11'
+CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_CONFIDENT_CLOUDY = 3
+# Need to validate this as value in docs says '011'
+CLOUD_MASK_QUALITY_FLAG_LAND_WATER_BACKGROUND_SEA_WATER = 3
+
+################################################################################
 
 
 def extract_qa_bits(qa_band, start_bit, end_bit):
@@ -74,22 +101,6 @@ def create_transform_vnp46a2(hdf5_filepath):
     return transform
 
 
-# Masks
-# Valid ranges and 'fill value' all defined here:
-# https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
-# The 'fill value' is a value used to show that data is missing for that pixel.
-# The variables below are essentially config to adjust how your images are processed.
-dnb_brdf_corrected_ntl_fill_value = 6553.5
-mandatory_quality_flag_fill_value = 255
-mandatory_quality_flag_poor_quality_value = 2
-# Need to validate this as value in docs says '10'
-cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_probably_cloudy = 2
-# Need to validate this as value in docs says '11'
-cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_confident_cloudy = 3
-# Need to validate this as value in docs says '011'
-cloud_mask_quality_flag_land_water_background_sea_water = 3
-
-
 # array is the array of pixels for DNB_BRDF-Corrected_NTL
 def removeMissingDataFrom(array):
     return ma.masked_where(
@@ -102,11 +113,11 @@ def removeMissingDataFrom(array):
 # removing fill values and low quality pixels using the Mandatory_Quality_Flag1 mask
 def applyMandatoryQualityFlagMask(array, mandatory_quality_flag_band):
     masked_for_fill_values = ma.masked_where(
-        mandatory_quality_flag_band == mandatory_quality_flag_fill_value, array, copy=True
+        mandatory_quality_flag_band == MANDATORY_QUALITY_FLAG_FILL_VALUE, array, copy=True
     )
 
     masked_for_poor_quality = ma.masked_where(
-        mandatory_quality_flag_band == mandatory_quality_flag_poor_quality_value, masked_for_fill_values, copy=True
+        mandatory_quality_flag_band == MANDATORY_QUALITY_FLAG_POOR_QUALITY_VALUE, masked_for_fill_values, copy=True
     )
 
     return masked_for_poor_quality
@@ -117,13 +128,13 @@ def applyCloudQualityFlagMask(array, QF_cloud_mask_band):
     cloud_detection_bitmask = extract_qa_bits(qa_band=QF_cloud_mask_band, start_bit=6, end_bit=7)
     masked_for_probably_cloudy = ma.masked_where(
         cloud_detection_bitmask
-        == cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_probably_cloudy,
+        == CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_PROBABLY_CLOUDY,
         array,
         copy=True,
     )
     masked_for_confident_cloudy = ma.masked_where(
         cloud_detection_bitmask
-        == cloud_mask_quality_flag_cloud_detection_results_and_confidence_indicator_confident_cloudy,
+        == CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_CONFIDENT_CLOUDY,
         masked_for_probably_cloudy,
         copy=True,
     )
@@ -131,7 +142,7 @@ def applyCloudQualityFlagMask(array, QF_cloud_mask_band):
     # Land/Water Background: Extract QF_Cloud_Mask bits 1-3
     land_water_bitmask = extract_qa_bits(qa_band=QF_cloud_mask_band, start_bit=1, end_bit=3)
     masked_for_sea_water = ma.masked_where(
-        land_water_bitmask == cloud_mask_quality_flag_land_water_background_sea_water,
+        land_water_bitmask == CLOUD_MASK_QUALITY_FLAG_LAND_WATER_BACKGROUND_SEA_WATER,
         masked_for_confident_cloudy,
         copy=True,
     )
@@ -215,3 +226,38 @@ def process_vnp46a2(hd5_filepath):
         message = print(f"Completed preprocessing: {os.path.basename(hd5_filepath)}\n")
 
     return message
+
+
+################################################################################
+
+
+def _main():
+    # Is this better than a helper?
+    # hdf5_files = glob.glob(os.path.join(hdf5_input_folder, "*.h5"))
+    processed_files = 0
+    all_hd5_files = globalHelpers.getAllFilesFromFolderWithFilename(
+        constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2
+    )
+    total_files = len(all_hd5_files)
+    print("\n")
+    print(f"Total files to process: {total_files}\n")
+
+    for filename in all_hd5_files:
+        filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{filename}"
+
+        process_vnp46a2(filepath)
+        processed_files += 1
+        print(f"\nPreprocessed file: {processed_files} of {total_files}\n")
+
+    # -------------------------SCRIPT COMPLETION--------------------------------- #
+    print("\n")
+    print("-" * (18 + len(os.path.basename(__file__))))
+    print(f"Completed script: {os.path.basename(__file__)}")
+    print("-" * (18 + len(os.path.basename(__file__))))
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(_main())
+    except KeyboardInterrupt:
+        sys.exit(-1)

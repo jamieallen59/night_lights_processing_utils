@@ -13,19 +13,19 @@ clean:
 # grid-reliability:
 # 	python3 -m nightlightsprocessing.groundtruth.grid_reliability -s 2014-11-01T23:45:00.000Z -e 2014-11-02T00:15:00.000Z
 
-create-training-dataset-of-low-reliability-grids:
-	python3 -m nightlightsprocessing.groundtruth.create_training_dataset_of_low_reliability_grids -s "Uttar Pradesh" -l "Lucknow"
+create-dataset-of-low-reliability-dates:
+	python3 -m nightlightsprocessing.groundtruth.create_dataset_of_low_reliability_dates -s "Uttar Pradesh" -l "Lucknow"
 
 
 # night lights
 download:
-		python3 -m nightlightsprocessing.nightlights.download -s "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A1/2016" -d "./input-data/night-lights/h5" -t "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBUFMgT0F1dGgyIEF1dGhlbnRpY2F0b3IiLCJpYXQiOjE2ODU1MzQ3MjUsIm5iZiI6MTY4NTUzNDcyNSwiZXhwIjoxNzAxMDg2NzI1LCJ1aWQiOiJqYW1pZWFsbGVuNTkiLCJlbWFpbF9hZGRyZXNzIjoiamFtaWVhbGxlbjU5QGdtYWlsLmNvbSIsInRva2VuQ3JlYXRvciI6ImphbWllYWxsZW41OSJ9.Hh5uHl3N5TWKblonqNT1-UwsdIgYNbwCYLmPTme_wxw"
-
-image-processing:
-		python3 -m nightlightsprocessing.nightlights.preprocess
+		python3 -m nightlightsprocessing.nightlights.download -d "./input-data/night-lights/h5" -t "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBUFMgT0F1dGgyIEF1dGhlbnRpY2F0b3IiLCJpYXQiOjE2ODU1MzQ3MjUsIm5iZiI6MTY4NTUzNDcyNSwiZXhwIjoxNzAxMDg2NzI1LCJ1aWQiOiJqYW1pZWFsbGVuNTkiLCJlbWFpbF9hZGRyZXNzIjoiamFtaWVhbGxlbjU5QGdtYWlsLmNvbSIsInRva2VuQ3JlYXRvciI6ImphbWllYWxsZW41OSJ9.Hh5uHl3N5TWKblonqNT1-UwsdIgYNbwCYLmPTme_wxw"
 
 create-VNP46A1-UTC-Time-dataset:
 		python3 -m nightlightsprocessing.nightlights.create_VNP46A1_UTC_Time_dataset
+
+process-vnp46a2-images:
+		python3 -m nightlightsprocessing.nightlights.process_VNP46A2_images
 
 test-clip-image:
 		python3 -m nightlightsprocessing.nightlights.clip_image

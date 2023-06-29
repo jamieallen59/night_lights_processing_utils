@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+# This file reads all the VNP46A1 files you provide it and reads the
+# UTC_Time band of those images.
+# See Table 3: https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
+# It creates a .csv file wth the dates, start and end times plus the spread between those times
+
 import os
 from nightlightsprocessing import helpers as globalHelpers
 from osgeo import gdal
@@ -8,12 +15,9 @@ from . import constants
 from . import helpers
 import datetime
 
-# This file reads all the VNP46A1 files you provide it and reads the
-# UTC_Time band of those images.
-# See Table 3: https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
-# It creates a .csv file wth the dates, start and end times plus the spread between those times
+################################################################################
 
-# Variable
+# Variables
 OUTPUT_FILENAME = "vnp46a1_image_created_times"
 OUTPUT_FILEPATH = f".{constants.OUTPUT_FOLDER}/{OUTPUT_FILENAME}.csv"
 
@@ -21,6 +25,8 @@ OUTPUT_FILEPATH = f".{constants.OUTPUT_FOLDER}/{OUTPUT_FILENAME}.csv"
 FILE_TYPE = "VNP46A1"  # It only works with VNP46A1, as these have the UTC_Time property
 SELECTED_DATASET = "UTC_Time"
 READ_METHOD = gdal.GA_ReadOnly
+
+################################################################################
 
 
 def _convert_to_normal_time(decimal_time):
@@ -163,6 +169,9 @@ def _write_to(data, filename):
     with open(filename, "w", newline="") as file:
         writer = csv.writer(file)
         writer.writerows(data)
+
+
+################################################################################
 
 
 def main():

@@ -2,36 +2,38 @@
 
 # Taken and modified from:
 # https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python
-
-# Attempts to do HTTP Gets with urllib2(py2) urllib.requets(py3) or subprocess
-# if tlsv1.1+ isn't supported by the python ssl module
-#
-# Will download csv or json depending on which python module is available
-#
-# IMPORTANT: This script should be used with a destination e.g:
-# https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A1/2014/305
+# The script can be run to download different datasets from ladsweb.modaps.eosdis.nasa.gov
 
 from __future__ import division, print_function, absolute_import, unicode_literals
-
 import argparse
 import os
 import os.path
 import shutil
 import sys
-from urllib.request import urlopen, Request, URLError, HTTPError
 import asyncio
-
 from io import StringIO
 
 ################################################################################
 
+# Variables
 # you will need to replace the following line with the location of a
 # python web client library that can make HTTPS requests to an IP address.
 USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r", "")
+# The following can be updated depending on your donwload requirements
+DATASET = "VNP46A1"
 TILE_DESCRIPTOR = "h26v06"
+YEAR = 2016
+START_DAY_NUMBER = 223  # 0 = 1st Jan
+END_DAY_NUMBER = 365  # 365 = 31st Dec
+
+# Constants
+# IMPORTANT: This script should only be used with the source destination below:
+SOURCE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000"
+
+################################################################################
 
 
-# this is the choice of last resort, when other attempts have failed
+# This is the choice of last resort, when other attempts have failed
 def getcURL(url, headers=None, out=None):
     import subprocess
 
@@ -151,19 +153,19 @@ def _get_file_details_for_selected_tile(src, token):
 
         return first_and_only_item
 
-    except ImportError:
-        print("ERROR")
+    except ImportError as e:
+        print("IMPORT ERROR", e)
+    except IndexError as e:
+        print("INDEX ERROR", e)
 
     return None
 
 
-async def _download_tile_for_days(source, destination, token):
-    start_day_number = 0
-    end_day = 365
+async def _download_tile_for_days(destination, token):
     tasks = []
 
-    for i in range(start_day_number, end_day + 1):
-        url = f"{source}/{i:03}"
+    for i in range(START_DAY_NUMBER, END_DAY_NUMBER + 1):  # 365 = 31st Dec
+        url = f"{SOURCE_URL}/{DATASET}/{YEAR}/{i:03}"
         print(f"starting task using url {url}")
         file_details_to_download = _get_file_details_for_selected_tile(url, token)
 
@@ -176,9 +178,6 @@ async def _download_tile_for_days(source, destination, token):
 
 def _main(argv):
     parser = argparse.ArgumentParser(prog=argv[0], description=DESC)
-    parser.add_argument(
-        "-s", "--source", dest="source", metavar="URL", help="Recursively download files at URL", required=True
-    )
     parser.add_argument(
         "-d",
         "--destination",
@@ -195,7 +194,7 @@ def _main(argv):
     if not os.path.exists(args.destination):
         os.makedirs(args.destination)
 
-    asyncio.run(_download_tile_for_days(args.source, args.destination, args.token))
+    asyncio.run(_download_tile_for_days(args.destination, args.token))
 
 
 if __name__ == "__main__":

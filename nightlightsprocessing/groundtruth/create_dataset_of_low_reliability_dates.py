@@ -1,15 +1,17 @@
+#!/usr/bin/env python3
+
+# This script takes in 'state' and 'location' args and creates a .csv of those
+# locations where there is no voltage for the amount of minuted defined in any given hour
+
 import sys, getopt, os
 from nightlightsprocessing import helpers
 from . import constants
 import pandas as pd
 from .get_ESMI_location_information import get_ESMI_location_information
-import csv
 
+################################################################################
 
-# This script takes in a 'state' and 'location' fields and creates a .csv of those
-# locations where there is no voltage for the amount of minuted defined in any given hour
-
-# Variable
+# Variables
 INPUT_FOLDER = constants.INPUT_GROUND_TRUTH_FOLDER
 OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
 # For any given hour. So if you want the full hour where there is no voltage, you'd use '60'
@@ -22,21 +24,11 @@ VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"
 LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
 
-
-def get_all_groundtruth_files():
-    all_groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, VOLTAGE_DATA_FILENAME)
-
-    return all_groundtruth_files
+################################################################################
 
 
-def filter_by_state(dataframe, location_names):
-    filtered_df = dataframe[dataframe[LOCATION_NAME_COLUMN].isin(location_names)]
-
-    return filtered_df
-
-
-def get_groundtruth_csvs_filtered_by(location_names):
-    groundtruth_files = get_all_groundtruth_files()
+def _get_groundtruth_csvs_filtered_by(location_names):
+    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, VOLTAGE_DATA_FILENAME)
 
     # Keys are created to allow knowing which original dataset each row came from
     frames = []
@@ -51,14 +43,14 @@ def get_groundtruth_csvs_filtered_by(location_names):
         # Remove any fields that cannot be changed to dates
         dataframe.dropna(subset=[DATE_COLUMN], inplace=True)
 
-        filtered_dataframe = filter_by_state(dataframe, location_names)
+        filtered_dataframe = dataframe[dataframe[LOCATION_NAME_COLUMN].isin(location_names)]
 
         frames.append(filtered_dataframe)
 
     return frames
 
 
-def get_filtered_by_zeros(dataframe, amount):
+def _get_filtered_by_zeros(dataframe, amount):
     zeros_columns = dataframe.columns[3:]  # Select the columns starting from Min 0
     filtered_df = dataframe[dataframe[zeros_columns].eq(0).sum(axis=1) >= amount]
 
@@ -67,7 +59,7 @@ def get_filtered_by_zeros(dataframe, amount):
 
 # Different years have different spreads of when images were taken.
 # The spread come from the UTC_time property of the VNP46A1 images for that year.
-def get_filtered_by_hours(df):
+def _get_filtered_by_hours(df):
     filtered_rows = []  # List to store filtered rows
 
     # Apply a boolean mask depending
@@ -115,6 +107,9 @@ def get_filtered_by_hours(df):
     return pd.DataFrame(filtered_rows)
 
 
+################################################################################
+
+
 def main(argv):
     indian_state = None
     indian_state_location = None
@@ -138,7 +133,7 @@ def main(argv):
     print("location_names", location_names)
     # get all csv files
     # loop over them and filter them all by the given state
-    dataframes = get_groundtruth_csvs_filtered_by(location_names)
+    dataframes = _get_groundtruth_csvs_filtered_by(location_names)
     # combine them all into one spreadsheet
     result = pd.concat(dataframes)
     # Sort new dataframe by date
@@ -146,8 +141,8 @@ def main(argv):
     # print(type(result.iloc[1, 5]))
 
     # Each row is an hour, so '60' means the lights were entirely off
-    result_filtered_by_zeros_included = get_filtered_by_zeros(result, CONTINUOUS_MINUTES_WITH_NO_VOLTAGE_PER_HOUR)
-    result_filtered_by_certain_hours = get_filtered_by_hours(result_filtered_by_zeros_included)
+    result_filtered_by_zeros_included = _get_filtered_by_zeros(result, CONTINUOUS_MINUTES_WITH_NO_VOLTAGE_PER_HOUR)
+    result_filtered_by_certain_hours = _get_filtered_by_hours(result_filtered_by_zeros_included)
     # Save to new csv called
     write_file_path = (
         f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - Uttar Pradesh - Lucknow - filtered test.csv"

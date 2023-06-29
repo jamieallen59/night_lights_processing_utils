@@ -1,2 +1,2 @@
-from .nightlights import preprocess
+from .nightlights import process_VNP46A2_images
 from .groundtruth import get_ESMI_location_information

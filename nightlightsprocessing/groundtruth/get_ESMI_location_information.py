@@ -1,14 +1,20 @@
-from nightlightsprocessing import helpers
-from . import constants
-import pandas as pd
-import os
+#!/usr/bin/env python3
 
 # This file is used to read the "ESMI location information.csv"
 # It exports get_location_information, which takes a state and
 # location string, and returns the locations present in the spreadsheet.
 # These locations can then be used to extract data rom the various ESMI minute-wise voltage data .csv's
 
-# Variable
+
+from nightlightsprocessing import helpers
+from . import constants
+import pandas as pd
+import os
+
+################################################################################
+
+
+# Variables
 FOLDER = constants.INPUT_GROUND_TRUTH_FOLDER
 
 # Constants
@@ -21,6 +27,8 @@ TO_DATE_COLUMN = "To date"
 STATE_COLUMN = "State"
 # CATEGORY_COLUMN = "Category" # Unused
 # CONNECTION_TYPE_COLUMN = "Connection Type" # Unused
+
+################################################################################
 
 
 # Private
@@ -50,6 +58,9 @@ def _get_ESMI_location_information_filtered_by_location(location_information_dat
     filtered_df = helpers.drop_filtered_table_index(filtered_df)
 
     return filtered_df
+
+
+################################################################################
 
 
 # Public
