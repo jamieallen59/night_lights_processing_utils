@@ -10,7 +10,6 @@ import os.path
 import sys
 import asyncio
 import csv
-from nightlightsprocessing import helpers as globalHelpers
 from . import helpers
 from . import constants
 
@@ -27,7 +26,7 @@ TILE_DESCRIPTOR = "h26v06"
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
 OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
 STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
+LOCATION = "Bahraich"
 
 # Constants
 # IMPORTANT: This script should only be used with the source destination below:
@@ -41,7 +40,7 @@ async def _download_tile_for_days(destination, token):
     tasks = []
     filename = f"{VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
     # Read csv file
-    groundtruth_date_and_time_instances_csvs = globalHelpers.getAllFilesFromFolderWithFilename(OUTPUT_FOLDER, filename)
+    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(OUTPUT_FOLDER, filename)
     # Should only be one file
     groundtruth_date_and_time_instances_csv = f".{OUTPUT_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
 

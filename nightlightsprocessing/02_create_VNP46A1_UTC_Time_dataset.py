@@ -6,7 +6,6 @@
 # It creates a .csv file wth the dates, start and end times plus the spread between those times
 
 import os
-from nightlightsprocessing import helpers as globalHelpers
 from osgeo import gdal
 import rasterio as rio
 import re
@@ -99,7 +98,7 @@ def _get_row_values(hdf5filepath):
 
 
 def _get_vnp46a1_time_data():
-    all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
+    all_files = helpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
     data = []
     count = 0
 

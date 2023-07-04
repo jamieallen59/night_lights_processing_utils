@@ -4,7 +4,6 @@
 # and writing them to .tif files.
 
 
-from nightlightsprocessing import helpers as globalHelpers
 import sys
 import numpy as np
 import numpy.ma as ma
@@ -235,9 +234,7 @@ def _main():
     # Is this better than a helper?
     # hdf5_files = glob.glob(os.path.join(hdf5_input_folder, "*.h5"))
     processed_files = 0
-    all_hd5_files = globalHelpers.getAllFilesFromFolderWithFilename(
-        constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2
-    )
+    all_hd5_files = helpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
     total_files = len(all_hd5_files)
     print("\n")
     print(f"Total files to process: {total_files}\n")

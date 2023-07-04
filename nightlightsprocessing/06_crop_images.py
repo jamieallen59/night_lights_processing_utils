@@ -1,13 +1,17 @@
 import os
 import rasterio
 
-import datetime as dt
+# import datetime as dt
 import earthpy.spatial as es
 import geopandas as gpd
 from . import constants
 from . import helpers
 
 # https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_image
+
+################################################################################
+
+################################################################################
 
 
 def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder):

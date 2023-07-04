@@ -3,6 +3,7 @@ INPUT_FOLDER = "/input-data"
 NIGHT_LIGHTS_INPUT_FOLDER = f"{INPUT_FOLDER}/night-lights"
 H5_INPUT_FOLDER = f"{NIGHT_LIGHTS_INPUT_FOLDER}/h5"
 LOCATION_INPUT_FOLDER = f"{INPUT_FOLDER}/locations"
+INPUT_GROUND_TRUTH_FOLDER = "/input-data/ground-truth"
 
 OUTPUT_FOLDER = "/output-data/night-lights"
 OUTPUT_GROUND_TRUTH_FOLDER = "/output-data/ground-truth"
