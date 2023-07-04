@@ -50,6 +50,8 @@ def _calculate_time_spread(first_time_decimal, last_time_decimal):
 def _get_subdataset_as_array(filename):
     # Open top-level dataset, loop through Science Data Sets (subdatasets),
     # and extract specified band
+    band = []
+
     with rio.open(filename) as dataset:
         for science_data_set in dataset.subdatasets:
             if re.search(f"{SELECTED_DATASET}$", science_data_set):
@@ -99,22 +101,32 @@ def _get_row_values(hdf5filepath):
 def _get_vnp46a1_time_data():
     all_files = globalHelpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
     data = []
+    count = 0
 
     for file in all_files:
         hdf5filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{file}"
+        try:
+            date, start_time, end_time, spread_time = _get_row_values(hdf5filepath)
 
-        date, start_time, end_time, spread_time = _get_row_values(hdf5filepath)
-
-        data.append([date, start_time, end_time, spread_time])
-
+            data.append([date, start_time, end_time, spread_time])
+        except:
+            count = count + 1
+            print(f"Error reading file: {hdf5filepath}")
+    print("total skipped", count)
     return data
 
 
 def parse_date(date_str):
+    date_format = "%d/%m/%Y"
+
     if isinstance(date_str, datetime.date):
         return date_str
-    # return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-    return datetime.datetime.strptime(date_str, "%d/%m/%Y").date()
+
+    try:
+        # return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+        return datetime.datetime.strptime(date_str, date_format).date()
+    except ValueError as e:
+        print(f"Date {date_str} is not in format {format}")
 
 
 # Check they're equal by their date field
@@ -177,24 +189,13 @@ def _write_to(data, filename):
 def main():
     header_row = ["Date", "start_time", "end_time", "start_end_spread_time"]
 
-    file_already_exists = os.path.exists(OUTPUT_FILEPATH)
+    new_data = _get_vnp46a1_time_data()
+    sorted_data = sorted(new_data, key=lambda row: parse_date(row[0]))
 
-    if file_already_exists:
-        new_data = _merge_new_and_existing_data(OUTPUT_FILEPATH)
-        # remove the header to allow sorting
-        new_data_without_header = new_data[1:]
-        sorted_data = sorted(new_data_without_header, key=lambda row: parse_date(row[0]))
-
-        # Add the header row back to the sorted rows
-        sorted_data.insert(0, header_row)
-        _write_to(sorted_data, OUTPUT_FILEPATH)
-    else:
-        # Write new data
-        new_data = _get_vnp46a1_time_data()
-        sorted_data = sorted(new_data, key=lambda row: parse_date(row[0]))
-
-        data = [header_row, *sorted_data]
-        _write_to(data, OUTPUT_FILEPATH)
+    data = [header_row, *sorted_data]
+    _write_to(data, OUTPUT_FILEPATH)
+    # TODO: could simply output the spreads here, rather than
+    # create a new file.
 
     print(f"The data has been written to {OUTPUT_FILEPATH}.")
 

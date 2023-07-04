@@ -14,8 +14,6 @@ from .get_ESMI_location_information import get_ESMI_location_information
 # Variables
 INPUT_FOLDER = constants.INPUT_GROUND_TRUTH_FOLDER
 OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
-# For any given hour. So if you want the full hour where there is no voltage, you'd use '60'
-CONTINUOUS_MINUTES_WITH_NO_VOLTAGE_PER_HOUR = 60
 
 # Constants
 # As the filenames are e.g. 'ESMI minute-wise voltage data 2014.csv', 'voltage data' will get all .csv's
@@ -50,61 +48,52 @@ def _get_groundtruth_csvs_filtered_by(location_names):
     return frames
 
 
-def _get_filtered_by_zeros(dataframe, amount):
-    zeros_columns = dataframe.columns[3:]  # Select the columns starting from Min 0
-    filtered_df = dataframe[dataframe[zeros_columns].eq(0).sum(axis=1) >= amount]
+# filters out rows that don't have the required number of 0's
+# defined by the 'amount' arg.
+# Low = 19:36:07
+# High = 20:35:26
+def _get_filtered_by_zeros(dataframe):
+    low_spread_hour_value = 19
+    low_spread_minute_value = 36
+    high_spread_hour_value = 20
+    high_spread_minute_value = 35
+    filtered_rows = []  # List to store filtered rows
+
+    for index, row in dataframe.iterrows():
+        hour = row["Hour"]
+
+        if hour == low_spread_hour_value:
+            if all(row[f"Min {minute}"] == 0 for minute in range(low_spread_minute_value, 60)):
+                filtered_rows.append(row)
+        elif hour == high_spread_hour_value:
+            # +1 as range with a single value starts at 0
+            if all(row[f"Min {minute}"] == 0 for minute in range(0, high_spread_minute_value)):
+                filtered_rows.append(row)
+
+    # Create a new DataFrame with the filtered rows
+    filtered_df = pd.DataFrame(filtered_rows)
 
     return filtered_df
 
 
-# Different years have different spreads of when images were taken.
-# The spread come from the UTC_time property of the VNP46A1 images for that year.
+# Low = 19:36:07
+# High = 20:35:26
 def _get_filtered_by_hours(df):
-    filtered_rows = []  # List to store filtered rows
+    low_spread_hour_value = 19
+    high_spread_hour_value = 20
+    filtered_df = df[(df["Hour"] >= low_spread_hour_value) & (df["Hour"] <= high_spread_hour_value)]
+    return filtered_df
 
-    # Apply a boolean mask depending
-    for index, row in df.iterrows():
-        date = pd.to_datetime(row[DATE_COLUMN], errors="coerce")
-        year = date.year
 
-        # Spread results: 19:44:12 - 20:31:18
-        if year == 2014:
-            seven_pm = 19
-            eight_pm = 20
-            filter_condition = (row["Hour"] >= seven_pm) & (row["Hour"] <= eight_pm)
-        elif year == 2015:
-            seven_pm = 19
-            eight_pm = 20
-            filter_condition = (row["Hour"] >= seven_pm) & (row["Hour"] <= eight_pm)
-        elif year == 2016:
-            seven_pm = 19
-            eight_pm = 20
-            filter_condition = (row["Hour"] >= seven_pm) & (row["Hour"] <= eight_pm)
-        elif year == 2017:
-            seven_pm = 19
-            eight_pm = 20
-            filter_condition = (row["Hour"] >= seven_pm) & (row["Hour"] <= eight_pm)
-        # Spread results: 18:48:25 - 21:19:11
-        elif year == 2018:
-            six_pm = 18
-            nine_pm = 21
-            filter_condition = (row["Hour"] >= six_pm) & (row["Hour"] <= nine_pm)
-        elif year == 2019:
-            seven_pm = 19
-            eight_pm = 20
-            filter_condition = (row["Hour"] >= seven_pm) & (row["Hour"] <= eight_pm)
-        # Should never get here. If it does, we use the most restrictive times.
-        else:
-            print(f"No year found. Year value: {year}. Date value: {date}")
-            seven_pm = 19
-            eight_pm = 20
-            print("Using most restrictive times between {seven_pm} and {eight_pm}")
-            filter_condition = (row["Hour"] >= seven_pm) & (row["Hour"] <= eight_pm)
+# This is done to ensure the date instances we find cover both hours.
+def _get_filtered_by_both_hours(df):
+    date_counts = df["Date"].value_counts()
 
-        if filter_condition:
-            filtered_rows.append(row)
+    # Filter the DataFrame to include only dates with two rows
+    filtered_dates = date_counts[date_counts == 2].index.tolist()
+    filtered_df = df[df["Date"].isin(filtered_dates)]
 
-    return pd.DataFrame(filtered_rows)
+    return filtered_df
 
 
 ################################################################################
@@ -140,15 +129,13 @@ def main(argv):
     result = result.sort_values("Date", ascending=True, kind="stable", na_position="first", ignore_index=True)
     # print(type(result.iloc[1, 5]))
 
-    # Each row is an hour, so '60' means the lights were entirely off
-    result_filtered_by_zeros_included = _get_filtered_by_zeros(result, CONTINUOUS_MINUTES_WITH_NO_VOLTAGE_PER_HOUR)
-    result_filtered_by_certain_hours = _get_filtered_by_hours(result_filtered_by_zeros_included)
+    result_filtered_by_certain_hours = _get_filtered_by_hours(result)
+    result_filtered_by_zeros = _get_filtered_by_zeros(result_filtered_by_certain_hours)
+    result_filtered_by_outages_over_both_hours = _get_filtered_by_both_hours(result_filtered_by_zeros)
     # Save to new csv called
-    write_file_path = (
-        f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - Uttar Pradesh - Lucknow - filtered test.csv"
-    )
+    write_file_path = f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - {indian_state} - {indian_state_location} - test filtered.csv"
     print("Writing new data to: ", write_file_path)
-    result_filtered_by_certain_hours.to_csv(write_file_path)
+    result_filtered_by_outages_over_both_hours.to_csv(write_file_path)
 
 
 if __name__ == "__main__":

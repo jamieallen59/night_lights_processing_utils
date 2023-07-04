@@ -22,8 +22,8 @@ USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r"
 # The following can be updated depending on your donwload requirements
 DATASET = "VNP46A1"
 TILE_DESCRIPTOR = "h26v06"
-YEAR = 2016
-START_DAY_NUMBER = 223  # 0 = 1st Jan
+YEAR = 2019
+START_DAY_NUMBER = 0  # 0 = 1st Jan
 END_DAY_NUMBER = 365  # 365 = 31st Dec
 
 # Constants
