@@ -129,53 +129,6 @@ def parse_date(date_str):
         print(f"Date {date_str} is not in format {format}")
 
 
-# Check they're equal by their date field
-def _check_items_are_equal(new_item, existing_item):
-    date_column_index = 0
-    new_item_date = new_item[date_column_index]
-    existing_item_date = existing_item[date_column_index]
-
-    # Necessary as dates come back as strings or datetime.date's from the .csv
-    existing_item_date_parsed = parse_date(existing_item_date)
-
-    if existing_item_date_parsed == new_item_date:
-        return True
-    else:
-        return False
-
-
-def _merge_new_and_existing_data(filename):
-    new_data = _get_vnp46a1_time_data()
-
-    # Read the existing data from the file
-    with open(filename, "r") as file:
-        reader = csv.reader(file)
-        data = list(reader)
-
-    for new_item in new_data:
-        date_column_index = 0
-        item_exists = False
-
-        # Iterate over each existing data item
-        # overwrite with new values, if they exist
-        for i, existing_item in enumerate(data):
-            is_header = existing_item[date_column_index] == "date"
-
-            if not is_header:
-                item_exists = _check_items_are_equal(new_item, existing_item)
-
-                if item_exists:
-                    # Overwrite the existing item with the new item
-                    data[i] = new_item
-                    break
-
-        if not item_exists:
-            data.append(new_item)
-
-    print("Overwriting old data with new data")
-    return data
-
-
 def _write_to(data, filename):
     # Write to a .csv file
     with open(filename, "w", newline="") as file:
@@ -194,8 +147,6 @@ def main():
 
     data = [header_row, *sorted_data]
     _write_to(data, OUTPUT_FILEPATH)
-    # TODO: could simply output the spreads here, rather than
-    # create a new file.
 
     print(f"The data has been written to {OUTPUT_FILEPATH}.")
 

@@ -5,6 +5,7 @@ H5_INPUT_FOLDER = f"{NIGHT_LIGHTS_INPUT_FOLDER}/h5"
 LOCATION_INPUT_FOLDER = f"{INPUT_FOLDER}/locations"
 
 OUTPUT_FOLDER = "/output-data/night-lights"
+OUTPUT_GROUND_TRUTH_FOLDER = "/output-data/ground-truth"
 
 FILE_EXTENSION_TIF = ".tif"
 FILE_TYPE_VNP46A2 = "VNP46A2"

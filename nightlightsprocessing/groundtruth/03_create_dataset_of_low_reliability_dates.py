@@ -21,6 +21,7 @@ OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
 VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"
 LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
+DATETIME_FORMAT = "%Y-%m-%d"
 
 ################################################################################
 
@@ -119,7 +120,8 @@ def main(argv):
             indian_state_location = arg
 
     location_names = get_ESMI_location_information(indian_state, indian_state_location)[LOCATION_NAME_COLUMN]
-    print("location_names", location_names)
+    print("Finding location names...")
+    print(location_names)
     # get all csv files
     # loop over them and filter them all by the given state
     dataframes = _get_groundtruth_csvs_filtered_by(location_names)
@@ -133,9 +135,27 @@ def main(argv):
     result_filtered_by_zeros = _get_filtered_by_zeros(result_filtered_by_certain_hours)
     result_filtered_by_outages_over_both_hours = _get_filtered_by_both_hours(result_filtered_by_zeros)
     # Save to new csv called
-    write_file_path = f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - {indian_state} - {indian_state_location} - test filtered.csv"
-    print("Writing new data to: ", write_file_path)
-    result_filtered_by_outages_over_both_hours.to_csv(write_file_path)
+    # This isn't the final dataset, but is the data for all locations filtered to only include
+    # days when there are outages. It's written to csv to allow inspection.
+    write_full_location_results_file_path = f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - {indian_state} - {indian_state_location} - filtered.csv"
+    print("Writing full filtered data to to allow inspection at: ", write_full_location_results_file_path)
+    result_filtered_by_outages_over_both_hours.to_csv(write_full_location_results_file_path)
+
+    # Then here we work on the data further to get individual locations and dates from the data.
+    # This is what we need to know which dates for VNP46A2 images to download + the locations needed to crop on that date.
+
+    date_location_counts = result_filtered_by_outages_over_both_hours.groupby(["Date", "Location name"]).size()
+    # Filter the DataFrame to include only rows with at least two instances of the date
+    filtered_dates = date_location_counts[date_location_counts >= 2].reset_index()
+    # Extract the unique date + location combinations as the final result
+    result = filtered_dates[["Location name", "Date"]].drop_duplicates()
+    # Add a 'Date day integer' which can be used for the download script
+    result["Date day integer"] = result["Date"].dt.dayofyear
+    result["Date year integer"] = result["Date"].dt.year
+
+    write_unique_date_location_combinations_path = f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - {indian_state} - {indian_state_location} - filtered unique.csv"
+    print("Writing unique locations and dates to: ", write_full_location_results_file_path)
+    result.to_csv(write_unique_date_location_combinations_path)
 
 
 if __name__ == "__main__":
