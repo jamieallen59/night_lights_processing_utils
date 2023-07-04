@@ -8,6 +8,8 @@ clean:
 	rm -rf __pycache__
 	rm -rf venv
 
+# Main functional scripts
+
 # 01 download range of A1 images to find time spreads in question
 01-download-range:
 		python3 -m nightlightsprocessing.01_download_VNP46A1_range -d "./data/01-VNP46A1-h5" -t "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBUFMgT0F1dGgyIEF1dGhlbnRpY2F0b3IiLCJpYXQiOjE2ODU1MzQ3MjUsIm5iZiI6MTY4NTUzNDcyNSwiZXhwIjoxNzAxMDg2NzI1LCJ1aWQiOiJqYW1pZWFsbGVuNTkiLCJlbWFpbF9hZGRyZXNzIjoiamFtaWVhbGxlbjU5QGdtYWlsLmNvbSIsInRva2VuQ3JlYXRvciI6ImphbWllYWxsZW41OSJ9.Hh5uHl3N5TWKblonqNT1-UwsdIgYNbwCYLmPTme_wxw"
@@ -38,7 +40,7 @@ clean:
 		python3 -m nightlightsprocessing.07_crop_images
 
 
-# Ancillary
+# Ancillary/helper scripts
 read-clipped-files:
 		python3 -m nightlightsprocessing.read_clipped_files
 

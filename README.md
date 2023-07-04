@@ -1,5 +1,8 @@
 # Night Lights Processing Utils
 
+TODO: update to new folder structure
+TODO: add validation into scripts
+
 `nightlights_processing_utils` is a set of python scripts for managing night lights satellite data.
 
 For use on:

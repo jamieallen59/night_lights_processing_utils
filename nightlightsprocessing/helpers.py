@@ -27,7 +27,9 @@ def filterFilesThatInclude(subString, filenames):
     return filtered
 
 
-#  Should be clear that this filters. Name doesn't show that at the mo.
+# TODO:Should be clear that this filters. Name doesn't show that at the mo.
+# TODO: should be able to remove filter capability from this now as directories are
+# structured differently. Or make 'filename' arg optional.
 def getAllFilesFromFolderWithFilename(folder, filename):
     owd = os.getcwd()
 
