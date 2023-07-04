@@ -5,7 +5,7 @@ H5_INPUT_FOLDER = f"{NIGHT_LIGHTS_INPUT_FOLDER}/h5"
 LOCATION_INPUT_FOLDER = f"{INPUT_FOLDER}/locations"
 INPUT_GROUND_TRUTH_FOLDER = "/input-data/ground-truth"
 
-OUTPUT_FOLDER = "/output-data/night-lights"
+OUTPUT_FOLDER = "/output-data/night-lights"  # TODO: rename
 OUTPUT_GROUND_TRUTH_FOLDER = "/output-data/ground-truth"
 
 FILE_EXTENSION_TIF = ".tif"
@@ -31,3 +31,4 @@ BAND_NAMES = [
 # https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
 
 DATETIME_FORMAT = "%Y-%m-%d"
+VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"

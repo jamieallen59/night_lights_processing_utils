@@ -18,16 +18,14 @@ OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
 # Constants
 # As the filenames are e.g. 'ESMI minute-wise voltage data 2014.csv', 'voltage data' will get all .csv's
 # and concatenate them together to use to check against.
-VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"
 LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
-DATETIME_FORMAT = "%Y-%m-%d"
 
 ################################################################################
 
 
 def _get_groundtruth_csvs_filtered_by(location_names):
-    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, VOLTAGE_DATA_FILENAME)
+    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, constants.VOLTAGE_DATA_FILENAME)
 
     # Keys are created to allow knowing which original dataset each row came from
     frames = []

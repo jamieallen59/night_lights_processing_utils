@@ -33,7 +33,8 @@ async def _download_tile_for_days(destination, token):
     tasks = []
 
     for i in range(START_DAY_NUMBER, END_DAY_NUMBER + 1):  # 365 = 31st Dec
-        url = f"{SOURCE_URL}/{DATASET}/{YEAR}/{i:03}"
+        index = "{:03d}".format(int(i))
+        url = f"{SOURCE_URL}/{DATASET}/{YEAR}/{index}"
         print(f"starting task using url {url}")
         file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, TILE_DESCRIPTOR)
 

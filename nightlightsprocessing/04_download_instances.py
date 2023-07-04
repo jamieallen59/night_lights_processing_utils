@@ -24,36 +24,40 @@ USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r"
 DATASET = "VNP46A2"
 TILE_DESCRIPTOR = "h26v06"
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
-OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
 STATE = "Uttar Pradesh"
-LOCATION = "Bahraich"
+LOCATION = "Lucknow"
 
 # Constants
 # IMPORTANT: This script should only be used with the source destination below:
 SOURCE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000"
-VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"
 
 ################################################################################
 
 
 async def _download_tile_for_days(destination, token):
     tasks = []
-    filename = f"{VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
+    filename = f"{constants.VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
     # Read csv file
-    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(OUTPUT_FOLDER, filename)
+    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(
+        constants.OUTPUT_GROUND_TRUTH_FOLDER, filename
+    )
     # Should only be one file
-    groundtruth_date_and_time_instances_csv = f".{OUTPUT_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
+    groundtruth_date_and_time_instances_csv = (
+        f".{constants.OUTPUT_GROUND_TRUTH_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
+    )
 
     with open(groundtruth_date_and_time_instances_csv, "r") as file:
         reader = csv.reader(file)
         data = list(reader)
 
         for _, date_and_location_instance in enumerate(data[1:]):  # [1:] to skip the header row
-            date_day_integer = date_and_location_instance[3]  # .csv must have this column at position 3
+            date_day_integer = "{:03d}".format(
+                int(date_and_location_instance[3])
+            )  # .csv must have this column at position 3
             year_integer = date_and_location_instance[4]  # .csv must have this column at position 4
             print("date_and_location_instance", date_and_location_instance)
 
-            url = f"{SOURCE_URL}/{DATASET}/{year_integer}/{date_day_integer:03}"
+            url = f"{SOURCE_URL}/{DATASET}/{year_integer}/{date_day_integer}"
             print(f"starting task using url {url}")
             file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, TILE_DESCRIPTOR)
 
