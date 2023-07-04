@@ -8,10 +8,16 @@
 .vscode
 
 # Project
-output-data/ground-truth/*
-output-data/night-lights/*
-input-data/ground-truth/*
-input-data/night-lights/*
+data/00-ground-truth/*
+data/01-VNP46A1-h5
+data/02-VNP46A1-image-created-times
+data/03-reliability-datasets
+data/04-VNP46A2-h5
+data/05-processed-VNP46A2-images
+data/06-location-shapefiles
+data/07-cropped-images
+
+
 *.pyc
 nightlights_processing.egg-info
 venv

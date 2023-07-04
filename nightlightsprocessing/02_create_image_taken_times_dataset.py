@@ -18,7 +18,9 @@ import datetime
 
 # Variables
 OUTPUT_FILENAME = "vnp46a1_image_created_times"
-OUTPUT_FILEPATH = f".{constants.OUTPUT_FOLDER}/{OUTPUT_FILENAME}.csv"
+OUTPUT_FILEPATH = f".{constants.O2_VNP46A1_IMAGE_CREATED_TIMES_PATH}/{OUTPUT_FILENAME}.csv"
+VNP46A1_INPUT_FILEPATH = constants.O1_VNP46A1_H5_PATH
+
 
 # Constants
 FILE_TYPE = "VNP46A1"  # It only works with VNP46A1, as these have the UTC_Time property
@@ -98,12 +100,12 @@ def _get_row_values(hdf5filepath):
 
 
 def _get_vnp46a1_time_data():
-    all_files = helpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, FILE_TYPE)
+    all_files = helpers.getAllFilesFromFolderWithFilename(VNP46A1_INPUT_FILEPATH, FILE_TYPE)
     data = []
     count = 0
 
     for file in all_files:
-        hdf5filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{file}"
+        hdf5filepath = f"{os.getcwd()}{VNP46A1_INPUT_FILEPATH}/{file}"
         try:
             date, start_time, end_time, spread_time = _get_row_values(hdf5filepath)
 

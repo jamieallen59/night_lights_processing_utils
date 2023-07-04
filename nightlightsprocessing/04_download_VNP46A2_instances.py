@@ -17,6 +17,11 @@ from . import constants
 ################################################################################
 
 # Variables
+STATE = "Uttar Pradesh"
+LOCATION = "Lucknow"
+FILENAME = f"{constants.VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
+INPUT_FOLDER = constants.O3_RELIABILITY_DATASETS_PATH
+
 # you will need to replace the following line with the location of a
 # python web client library that can make HTTPS requests to an IP address.
 USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r", "")
@@ -24,8 +29,7 @@ USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r"
 DATASET = "VNP46A2"
 TILE_DESCRIPTOR = "h26v06"
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
-STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
+
 
 # Constants
 # IMPORTANT: This script should only be used with the source destination below:
@@ -36,15 +40,10 @@ SOURCE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000"
 
 async def _download_tile_for_days(destination, token):
     tasks = []
-    filename = f"{constants.VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
     # Read csv file
-    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(
-        constants.OUTPUT_GROUND_TRUTH_FOLDER, filename
-    )
+    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, FILENAME)
     # Should only be one file
-    groundtruth_date_and_time_instances_csv = (
-        f".{constants.OUTPUT_GROUND_TRUTH_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
-    )
+    groundtruth_date_and_time_instances_csv = f".{INPUT_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
 
     with open(groundtruth_date_and_time_instances_csv, "r") as file:
         reader = csv.reader(file)

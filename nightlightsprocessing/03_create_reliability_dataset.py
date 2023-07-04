@@ -12,8 +12,9 @@ from .get_ESMI_location_information import get_ESMI_location_information
 ################################################################################
 
 # Variables
-INPUT_FOLDER = constants.INPUT_GROUND_TRUTH_FOLDER
-OUTPUT_FOLDER = constants.OUTPUT_GROUND_TRUTH_FOLDER
+INPUT_FOLDER = constants.OO_GROUND_TRUTH_PATH
+OUTPUT_FOLDER = constants.O3_RELIABILITY_DATASETS_PATH
+COMMON_GROUND_TRUTH_FILENAME = constants.VOLTAGE_DATA_FILENAME
 
 # Constants
 # As the filenames are e.g. 'ESMI minute-wise voltage data 2014.csv', 'voltage data' will get all .csv's
@@ -25,7 +26,7 @@ DATE_COLUMN = "Date"
 
 
 def _get_groundtruth_csvs_filtered_by(location_names):
-    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, constants.VOLTAGE_DATA_FILENAME)
+    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, COMMON_GROUND_TRUTH_FILENAME)
 
     # Keys are created to allow knowing which original dataset each row came from
     frames = []

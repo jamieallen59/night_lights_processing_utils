@@ -19,6 +19,9 @@ from . import helpers
 
 #  Variables
 
+INPUT_FOLDER = constants.O4_VNP46A2_H5_PATH
+OUTPUT_FOLDER = constants.O5_PROCESSED_VNP46A2_IMAGES
+
 # Masks
 # Valid ranges and 'fill value' all defined here:
 # https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
@@ -213,7 +216,7 @@ def process_vnp46a2(hd5_filepath):
 
         # Export masked array to GeoTiff (no data set to np.nan in export)
         export_name = helpers.get_hd5_to_tif_export_name(hd5_filepath)
-        output_path = f"{os.getcwd()}{constants.OUTPUT_FOLDER}/"
+        output_path = f"{os.getcwd()}{OUTPUT_FOLDER}/"
         helpers.export_array(
             array=filled_data,
             output_path=os.path.join(output_path, export_name),
@@ -234,13 +237,13 @@ def _main():
     # Is this better than a helper?
     # hdf5_files = glob.glob(os.path.join(hdf5_input_folder, "*.h5"))
     processed_files = 0
-    all_hd5_files = helpers.getAllFilesFromFolderWithFilename(constants.H5_INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
+    all_hd5_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
     total_files = len(all_hd5_files)
     print("\n")
     print(f"Total files to process: {total_files}\n")
 
     for filename in all_hd5_files:
-        filepath = f"{os.getcwd()}{constants.H5_INPUT_FOLDER}/{filename}"
+        filepath = f"{os.getcwd()}{INPUT_FOLDER}/{filename}"
 
         process_vnp46a2(filepath)
         processed_files += 1

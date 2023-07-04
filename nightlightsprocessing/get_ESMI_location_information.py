@@ -14,11 +14,10 @@ import os
 ################################################################################
 
 
-# Variables
-FOLDER = constants.INPUT_GROUND_TRUTH_FOLDER
-
 # Constants
 LOCATION_INFORMATION_FILENAME = "ESMI location information.csv"
+GROUND_TRUTH_INPUT_PATH = constants.OO_GROUND_TRUTH_PATH
+
 # Column names
 LOCATION_NAME_COLUMN = "Location name"
 FROM_DATE_COLUMN = "From date"
@@ -33,9 +32,11 @@ STATE_COLUMN = "State"
 
 # Private
 def _read_ESMI_location_information_csv():
-    location_information_files = helpers.getAllFilesFromFolderWithFilename(FOLDER, LOCATION_INFORMATION_FILENAME)
+    location_information_files = helpers.getAllFilesFromFolderWithFilename(
+        GROUND_TRUTH_INPUT_PATH, LOCATION_INFORMATION_FILENAME
+    )
     location_information_file = location_information_files[0]
-    location_information_file_path = f"{os.getcwd()}{FOLDER}/{location_information_file}"
+    location_information_file_path = f"{os.getcwd()}{GROUND_TRUTH_INPUT_PATH}/{location_information_file}"
 
     location_information_dataframe = pd.read_csv(
         location_information_file_path, parse_dates=[FROM_DATE_COLUMN, TO_DATE_COLUMN], dayfirst=True
