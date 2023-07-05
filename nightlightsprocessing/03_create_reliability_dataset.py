@@ -27,9 +27,9 @@ def _get_groundtruth_csvs_filtered_by(input_folder, location_names):
     for filename in groundtruth_files:
         file_path = f"{input_folder}/{filename}"
 
-        # TODO: use centralised date format
-        date_format = "%d-%m-%Y"
-        dataframe = pd.read_csv(file_path, parse_dates=[DATE_COLUMN], date_format=date_format, dayfirst=True)
+        dataframe = pd.read_csv(
+            file_path, parse_dates=[DATE_COLUMN], date_format=constants.DATETIME_FORMAT, dayfirst=True
+        )
         # Force converting date fields to dates
         dataframe[DATE_COLUMN] = pd.to_datetime(dataframe[DATE_COLUMN], errors="coerce")
         # Remove any fields that cannot be changed to dates

@@ -12,6 +12,7 @@ import re
 import csv
 import sys
 from . import helpers
+from . import constants
 import datetime
 
 FILE_TYPE = "VNP46A1"  # It only works with VNP46A1, as these have the UTC_Time property
@@ -110,14 +111,11 @@ def _get_vnp46a1_time_data(input_folder):
 
 
 def parse_date(date_str):
-    date_format = "%d/%m/%Y"
-
     if isinstance(date_str, datetime.date):
         return date_str
 
     try:
-        # return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-        return datetime.datetime.strptime(date_str, date_format).date()
+        return datetime.datetime.strptime(date_str, constants.DATETIME_FORMAT).date()
     except ValueError as e:
         print(f"Date {date_str} is not in format {format}")
 

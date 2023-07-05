@@ -1,5 +1,5 @@
 VOLTAGE_DATA_FILENAME = "ESMI minute-wise voltage data"
-DATETIME_FORMAT = "%Y-%m-%d"
+DATETIME_FORMAT = "%d/%m/%Y"
 
 # VNP46A2 mask properties
 BRDF_CORRECTED = "DNB_BRDF-Corrected_NTL"
