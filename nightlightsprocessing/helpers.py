@@ -80,10 +80,10 @@ def get_hd5_to_tif_export_name(filepath):
     return f"{_get_base_filepath(filepath)}.tif"
 
 
-def get_tif_to_clipped_export_name(filepath, location_name):
+def get_tif_to_clipped_export_name(filepath, location_name, reliability="OFF"):
     image_country = location_name.replace(" ", "-").lower()
 
-    export_name = f"{_get_base_filepath(filepath)}clipped-{image_country}.tif"
+    export_name = f"{_get_base_filepath(filepath)}clipped-{image_country}-{reliability}.tif"
     return export_name
 
 
@@ -97,6 +97,41 @@ def get_datetime_from_julian_date(julian_date):
     date_only = full_datetime.date()
 
     return date_only
+
+
+# tile_descriptor: e.g. h26v06
+def _filter_only_tiles(all_files_content, tile_descriptor):
+    filtered = []
+
+    for file_content in all_files_content:
+        file_name = file_content["name"]
+
+        if tile_descriptor in file_name:
+            filtered.append(file_content)
+    return filtered
+
+
+def get_file_details_for_selected_tile(src, token, tile_descriptor):
+    try:
+        import csv
+
+        #  Reads a .csv file which represents all the data from the url given
+        all_tiles_for_one_day = [
+            f for f in csv.DictReader(StringIO(geturl("%s.csv" % src, token)), skipinitialspace=True)
+        ]
+        # filter for only the tiles needed
+        file_details_for_selected_tile = _filter_only_tiles(all_tiles_for_one_day, tile_descriptor)
+        # Because there's only one tile image per day, so should only ever be one returned
+        first_and_only_item = file_details_for_selected_tile[0]
+
+        return first_and_only_item
+
+    except ImportError as e:
+        print("IMPORT ERROR", e)
+    except IndexError as e:
+        print("INDEX ERROR", e)
+
+    return None
 
 
 # Download helpers
@@ -162,18 +197,6 @@ def geturl(url, token=None, out=None):
         return getcURL(url, headers, out)
 
 
-# tile_descriptor: e.g. h26v06
-def _filter_only_tiles(all_files_content, tile_descriptor):
-    filtered = []
-
-    for file_content in all_files_content:
-        file_name = file_content["name"]
-
-        if tile_descriptor in file_name:
-            filtered.append(file_content)
-    return filtered
-
-
 async def sync(src, destination, token, file_details):
     print("Attempting download of:", file_details["name"])
     # currently we use filesize of 0 to indicate directory
@@ -199,26 +222,3 @@ async def sync(src, destination, token, file_details):
         except IOError as e:
             print("open `%s': %s" % (e.filename, e.strerror), file=sys.stderr)
             sys.exit(-1)
-
-
-def get_file_details_for_selected_tile(src, token, tile_descriptor):
-    try:
-        import csv
-
-        #  Reads a .csv file which represents all the data from the url given
-        all_tiles_for_one_day = [
-            f for f in csv.DictReader(StringIO(geturl("%s.csv" % src, token)), skipinitialspace=True)
-        ]
-        # filter for only the tiles needed
-        file_details_for_selected_tile = _filter_only_tiles(all_tiles_for_one_day, tile_descriptor)
-        # Because there's only one tile image per day, so should only ever be one returned
-        first_and_only_item = file_details_for_selected_tile[0]
-
-        return first_and_only_item
-
-    except ImportError as e:
-        print("IMPORT ERROR", e)
-    except IndexError as e:
-        print("INDEX ERROR", e)
-
-    return None

@@ -3,7 +3,7 @@
 # This script processes VNP46A2 datasets, exatrcting the various masks from the datasets
 # and writing them to .tif files.
 
-
+import argparse
 import sys
 import numpy as np
 import numpy.ma as ma
@@ -15,14 +15,11 @@ from rasterio.transform import from_origin
 from . import constants
 from . import helpers
 
-################################################################################
 
-#  Variables
+DESC = "This script processes VNP46A2 datasets, exatrcting the various masks from the datasets and writing them to .tif files."
+FILE_TYPE_VNP46A2 = "VNP46A2"
 
-INPUT_FOLDER = constants.O4_VNP46A2_H5_PATH
-OUTPUT_FOLDER = constants.O5_PROCESSED_VNP46A2_IMAGES
-
-# Masks
+# Mask Variables
 # Valid ranges and 'fill value' all defined here:
 # https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
 # The 'fill value' is a value used to show that data is missing for that pixel.
@@ -167,7 +164,7 @@ def extract_band(hd5_filepath, band_name):
     return band
 
 
-def process_vnp46a2(hd5_filepath):
+def process_vnp46a2(hd5_filepath, destination):
     try:
         DNB_BRDF_corrected_ntl_band = extract_band(hd5_filepath, constants.BRDF_CORRECTED)
         mandatory_quality_flag_band = extract_band(hd5_filepath, constants.QUALITY_FLAG)
@@ -185,7 +182,7 @@ def process_vnp46a2(hd5_filepath):
         result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval_array, QF_cloud_mask_band)
         print("Masking for sea water...")
 
-        # Do I need to do this?
+        # TODO: Do I need to do this?
         # print("Masking for sensor problems...")
         # # Mask radiance for sensor problems (QF_DNB != 0)
         # #  (0 = no problems, any number > 0 means some kind of issue)
@@ -201,9 +198,6 @@ def process_vnp46a2(hd5_filepath):
         ma.set_fill_value(result, np.nan)
         filled_data = result.filled()
 
-        # print("revert scale factor...")
-        # final = filled_data.astype("float") * 10
-
         print("Creating metadata...")
         metadata = create_metadata(
             array=filled_data,
@@ -216,10 +210,9 @@ def process_vnp46a2(hd5_filepath):
 
         # Export masked array to GeoTiff (no data set to np.nan in export)
         export_name = helpers.get_hd5_to_tif_export_name(hd5_filepath)
-        output_path = f"{os.getcwd()}{OUTPUT_FOLDER}/"
         helpers.export_array(
             array=filled_data,
-            output_path=os.path.join(output_path, export_name),
+            output_path=os.path.join(destination, export_name),
             metadata=metadata,
         )
     except Exception as error:
@@ -230,22 +223,19 @@ def process_vnp46a2(hd5_filepath):
     return message
 
 
-################################################################################
-
-
-def _main():
+def process_VNP46A2_images(input_folder, destination):
     # Is this better than a helper?
     # hdf5_files = glob.glob(os.path.join(hdf5_input_folder, "*.h5"))
     processed_files = 0
-    all_hd5_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, constants.FILE_TYPE_VNP46A2)
+    all_hd5_files = helpers.getAllFilesFromFolderWithFilename(input_folder, FILE_TYPE_VNP46A2)
     total_files = len(all_hd5_files)
     print("\n")
     print(f"Total files to process: {total_files}\n")
 
     for filename in all_hd5_files:
-        filepath = f"{os.getcwd()}{INPUT_FOLDER}/{filename}"
+        filepath = f"{input_folder}/{filename}"
 
-        process_vnp46a2(filepath)
+        process_vnp46a2(filepath, destination)
         processed_files += 1
         print(f"\nPreprocessed file: {processed_files} of {total_files}\n")
 
@@ -256,8 +246,27 @@ def _main():
     print("-" * (18 + len(os.path.basename(__file__))))
 
 
+################################################################################
+
+
+def _main(argv):
+    parser = argparse.ArgumentParser(prog=argv[0], description=DESC)
+    parser.add_argument(
+        "-d",
+        "--destination",
+        dest="destination",
+        help="Store directory structure in DIR",
+        required=True,
+    )
+    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
+
+    args = parser.parse_args(argv[1:])
+
+    process_VNP46A2_images(args.input_folder, args.destination)
+
+
 if __name__ == "__main__":
     try:
-        sys.exit(_main())
+        sys.exit(_main(sys.argv))
     except KeyboardInterrupt:
         sys.exit(-1)

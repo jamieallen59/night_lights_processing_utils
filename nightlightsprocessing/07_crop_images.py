@@ -3,6 +3,9 @@
 import os
 import rasterio
 import csv
+import sys
+import argparse
+
 import earthpy.spatial as es
 import fiona
 import geopandas as gpd
@@ -11,24 +14,13 @@ from . import helpers
 
 # https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_image
 
-################################################################################
-# Variables
-STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
+DESC = "This script crops all images found in the given VNP46A2 file, based on data from previous script outputs"
 
-DATA_INPUT_FOLDER = constants.O3_RELIABILITY_DATASETS_PATH
-VNP46A2_TIF_FOLDER = constants.O5_PROCESSED_VNP46A2_IMAGES
-SHAPEFILE_INPUT_FOLDER = constants.O6_LOCATION_SHAPEFILES
-OUTPUT_FOLDER = constants.O7_CROPPED_IMAGES
-
-FILENAME = f"{constants.VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
-
-BUFFER_DISTANCE_MILES = 5
 
 ################################################################################
 
 
-def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder):
+def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder, grid_reliability):
     print(f"Started clipping: Clip {geotiff_path} " f"to {location_name} boundary")
     try:
         print("Clipping image...")
@@ -37,7 +29,9 @@ def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder):
             cropped_image, cropped_metadata = es.crop_image(raster=src, geoms=clip_boundary)
 
         print("Setting export name...")
-        export_name = helpers.get_tif_to_clipped_export_name(filepath=geotiff_path, location_name=location_name)
+        export_name = helpers.get_tif_to_clipped_export_name(
+            filepath=geotiff_path, location_name=location_name, reliability=grid_reliability
+        )
 
         print("Exporting to GeoTiff...", export_name)
         output_path = os.path.join(output_folder, export_name)
@@ -55,12 +49,27 @@ def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder):
     return message
 
 
-def main():
+def crop_images(
+    reliability_dataset_input_folder,
+    vnp46a2_tif_input_folder,
+    shapefile_input_folder,
+    destination,
+    buffer,
+    state,
+    location,
+    grid_reliability,
+):
+    filename = f"{constants.VOLTAGE_DATA_FILENAME} - {state} - {location} - filtered unique {grid_reliability}.csv"
+
     # Loop through date and time instances
     # Read csv file
-    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(DATA_INPUT_FOLDER, FILENAME)
+    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(
+        reliability_dataset_input_folder, filename
+    )
     # Should only be one file
-    groundtruth_date_and_time_instances_csv = f".{DATA_INPUT_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
+    groundtruth_date_and_time_instances_csv = (
+        f".{reliability_dataset_input_folder}/{groundtruth_date_and_time_instances_csvs[0]}"
+    )
 
     with open(groundtruth_date_and_time_instances_csv, "r") as file:
         reader = csv.reader(file)
@@ -77,24 +86,24 @@ def main():
 
             filename_filter = f"vnp46a2-a{year_integer}{date_day_integer}"
 
-            vnp46a2_tif_file_paths = helpers.getAllFilesFromFolderWithFilename(VNP46A2_TIF_FOLDER, filename_filter)
-            vnp46a2_tif_file_path = (
-                f".{VNP46A2_TIF_FOLDER}/{vnp46a2_tif_file_paths[0]}"  # Should only be one .tif, so take the first one
+            vnp46a2_tif_file_paths = helpers.getAllFilesFromFolderWithFilename(
+                vnp46a2_tif_input_folder, filename_filter
             )
+            vnp46a2_tif_file_path = f"{vnp46a2_tif_input_folder}/{vnp46a2_tif_file_paths[0]}"  # Should only be one .tif, so take the first one
             print("vnp46a2_tif_file_path", vnp46a2_tif_file_path)
             print("location_name", location_name)
             print("date", date)
 
             try:
                 # Get shape file by location name
-                location_path = f"{os.getcwd()}{SHAPEFILE_INPUT_FOLDER}/{location_name}.shp"
+                location_path = f"{shapefile_input_folder}/{location_name}.shp"
                 location_raw = gpd.read_file(location_path)
 
                 # Change the crs system to 32634 to allow us to set a buffer in metres
                 # https://epsg.io/32634
                 lucknow_unit_metres = location_raw.to_crs(crs=32634)
 
-                buffer_distance_metres = BUFFER_DISTANCE_MILES * 1609.34  # Convert miles to meters
+                buffer_distance_metres = int(buffer) * 1609.34  # Convert miles to meters
                 buffered_location = lucknow_unit_metres.buffer(buffer_distance_metres)
 
                 # Then change it back to allow the crop images
@@ -102,43 +111,83 @@ def main():
                 location = buffered_location.to_crs(crs=4326)
 
                 clip_boundary = location
-                clip_vnp46a2(vnp46a2_tif_file_path, clip_boundary, location_name, OUTPUT_FOLDER)
+                clip_vnp46a2(vnp46a2_tif_file_path, clip_boundary, location_name, destination, grid_reliability)
             except fiona.errors.DriverError as e:
                 print("Failed to read shapefile image", e)
 
-    # try:
-    #     location_path = f"{os.getcwd()}{SHAPEFILE_INPUT_FOLDER}/lucknow-point.shp"
-    #     lucknowRaw = gpd.read_file(location_path)
 
-    #     # here we change the crs system to 32634 to allow us to set a buffer in metres
-    #     # https://epsg.io/32634
-    #     lucknow_unit_metres = lucknowRaw.to_crs(crs=32634)
-    #     buffer_distance_miles = 15
-    #     buffer_distance_metres = buffer_distance_miles * 1609.34  # Convert miles to meters
-    #     buffered_lucknow = lucknow_unit_metres.buffer(buffer_distance_metres)
-
-    #     # Then change it back to allow the crop images
-    #     # https://epsg.io/4326
-    #     lucknow = buffered_lucknow.to_crs(crs=4326)
-
-    #     geotiff_path = f"{os.getcwd()}{OUTPUT_FOLDER}/vnp46a2-a2014305-h26v06-001-2020214163912.tif"
-
-    #     clip_boundary = lucknow
-    #     location_name = "Lucknow"
-    #     output_folder = f"{os.getcwd()}{OUTPUT_FOLDER}"
-    #     clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder)
-
-    # except Exception as error:
-    #     message = print(f"Failed: {error}\n")
-    # else:
-    #     message = print(f"Completed")
-
-    # return message
+################################################################################
 
 
-# TODO: use crop_all in future so done all at once?
-# https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_all
+def _main(argv):
+    parser = argparse.ArgumentParser(prog=argv[0], description=DESC)
+    parser.add_argument(
+        "-r",
+        "--reliability-dataset-input-folder",
+        dest="reliability_dataset_input_folder",
+        help="The directory of your reliability datasets",
+        required=True,
+    )
+    parser.add_argument(
+        "-t",
+        "--vnp46a2-tif-input-folder",
+        dest="vnp46a2_tif_input_folder",
+        help="The directory of your VNP46A2 processed .tif files",
+        required=True,
+    )
+    parser.add_argument(
+        "-s",
+        "--shapefile-input-folder",
+        dest="shapefile_input_folder",
+        help="The directory of your shapefiles",
+        required=True,
+    )
+    parser.add_argument(
+        "-d",
+        "--destination",
+        dest="destination",
+        help="Store directory structure in DIR",
+        required=True,
+    )
+    parser.add_argument(
+        "-b",
+        "--buffer",
+        dest="buffer",
+        help="Distance in miles of the buffer around locations",
+        required=True,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--state",
+        dest="state",
+        help="State in India",
+        required=True,
+    )
+    parser.add_argument("-l", "--location", dest="location", help="Location within State defined", required=True)
+    parser.add_argument(
+        "-gr",
+        "--grid-reliability",
+        dest="grid_reliability",
+        help="A value either LOW or HIGH to represent the reliability of the grid",
+        required=True,
+    )
+    args = parser.parse_args(argv[1:])
+
+    crop_images(
+        args.reliability_dataset_input_folder,
+        args.vnp46a2_tif_input_folder,
+        args.shapefile_input_folder,
+        args.destination,
+        args.buffer,
+        args.state,
+        args.location,
+        args.grid_reliability,
+    )
+
+
 if __name__ == "__main__":
-    main()
-
-    # input("Press ENTER to exit")
+    try:
+        sys.exit(_main(sys.argv))
+    except KeyboardInterrupt:
+        sys.exit(-1)

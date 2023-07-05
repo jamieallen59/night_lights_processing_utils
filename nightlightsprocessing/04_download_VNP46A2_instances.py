@@ -5,8 +5,6 @@
 # The script can be run to download different datasets from ladsweb.modaps.eosdis.nasa.gov
 
 import argparse
-import os
-import os.path
 import sys
 import asyncio
 import csv
@@ -16,20 +14,12 @@ from . import constants
 
 ################################################################################
 
-# Variables
-STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
-FILENAME = f"{constants.VOLTAGE_DATA_FILENAME} - {STATE} - {LOCATION} - filtered unique.csv"
-INPUT_FOLDER = constants.O3_RELIABILITY_DATASETS_PATH
-
 # you will need to replace the following line with the location of a
 # python web client library that can make HTTPS requests to an IP address.
 USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r", "")
 # The following can be updated depending on your donwload requirements
 DATASET = "VNP46A2"
-TILE_DESCRIPTOR = "h26v06"
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
-
 
 # Constants
 # IMPORTANT: This script should only be used with the source destination below:
@@ -38,12 +28,15 @@ SOURCE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000"
 ################################################################################
 
 
-async def _download_tile_for_days(destination, token):
+async def _download_tile_for_days(destination, token, tile_descriptor, state, location, input_folder):
+    # TODO: make filename match up with output variable from script 03 and 07
+    filename = f"{constants.VOLTAGE_DATA_FILENAME} - {state} - {location} - filtered unique ON.csv"
+
     tasks = []
     # Read csv file
-    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, FILENAME)
+    groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(input_folder, filename)
     # Should only be one file
-    groundtruth_date_and_time_instances_csv = f".{INPUT_FOLDER}/{groundtruth_date_and_time_instances_csvs[0]}"
+    groundtruth_date_and_time_instances_csv = f"{input_folder}/{groundtruth_date_and_time_instances_csvs[0]}"
 
     with open(groundtruth_date_and_time_instances_csv, "r") as file:
         reader = csv.reader(file)
@@ -58,7 +51,7 @@ async def _download_tile_for_days(destination, token):
 
             url = f"{SOURCE_URL}/{DATASET}/{year_integer}/{date_day_integer}"
             print(f"starting task using url {url}")
-            file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, TILE_DESCRIPTOR)
+            file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, tile_descriptor)
 
             tasks.append(asyncio.create_task(helpers.sync(url, destination, token, file_details_to_download)))
 
@@ -73,19 +66,35 @@ def _main(argv):
         "-d",
         "--destination",
         dest="destination",
-        metavar="DIR",
         help="Store directory structure in DIR",
         required=True,
     )
+    parser.add_argument("-t", "--token", dest="token", help="Use app token TOK to authenticate", required=True)
+    parser.add_argument("-td", "--tile-descriptor", dest="tile_descriptor", help="A MODIS tile value", required=True)
     parser.add_argument(
-        "-t", "--token", dest="token", metavar="TOK", help="Use app token TOK to authenticate", required=True
+        "-s",
+        "--state",
+        dest="state",
+        help="State in India",
+        required=True,
     )
-    args = parser.parse_args(argv[1:])
-    # If the directory doesn't exist, create the path
-    if not os.path.exists(args.destination):
-        os.makedirs(args.destination)
+    parser.add_argument("-l", "--location", dest="location", help="Location within State defined", required=True)
+    parser.add_argument(
+        "-gr",
+        "--grid-reliability",
+        dest="grid_reliability",
+        help="A value either LOW or HIGH to represent the reliability of the grid",
+        required=True,
+    )
+    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
 
-    asyncio.run(_download_tile_for_days(args.destination, args.token))
+    args = parser.parse_args(argv[1:])
+
+    asyncio.run(
+        _download_tile_for_days(
+            args.destination, args.token, args.tile_descriptor, args.state, args.location, args.input_folder
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
+import argparse
+import sys
 import geopandas as gpd
 from shapely.geometry import Point
 
-from . import constants
+DESC = "This script creates a shapefile based on the name, logitude and latitude defined."
 
-################################################################################
-# Variables
-
-OUTPUT_FOLDER = constants.O6_LOCATION_SHAPEFILES
 ################################################################################
 
 # name = "Aishbagh-Lucknow"
@@ -32,14 +30,36 @@ longitude = 80.9540233
 latitude = 26.8976618
 
 
-def main():
+def create_shapefile(destination):
     point = Point(longitude, latitude)
     data = gpd.GeoDataFrame(geometry=[point])
     data.crs = "EPSG:4326"  # For example, using WGS84 CRS
 
-    output_file = f".{OUTPUT_FOLDER}/{name}.shp"
+    output_file = f"{destination}/{name}.shp"
     data.to_file(output_file)
 
 
+################################################################################
+
+
+def _main(argv):
+    parser = argparse.ArgumentParser(prog=argv[0], description=DESC)
+    parser.add_argument(
+        "-d",
+        "--destination",
+        dest="destination",
+        help="Store directory structure in DIR",
+        required=True,
+    )
+    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
+
+    args = parser.parse_args(argv[1:])
+
+    create_shapefile(args.destination)
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        sys.exit(_main(sys.argv))
+    except KeyboardInterrupt:
+        sys.exit(-1)

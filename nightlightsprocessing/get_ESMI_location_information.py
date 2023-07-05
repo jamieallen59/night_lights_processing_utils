@@ -7,16 +7,10 @@
 
 
 from nightlightsprocessing import helpers
-from . import constants
 import pandas as pd
-import os
-
-################################################################################
 
 
-# Constants
 LOCATION_INFORMATION_FILENAME = "ESMI location information.csv"
-GROUND_TRUTH_INPUT_PATH = constants.OO_GROUND_TRUTH_PATH
 
 # Column names
 LOCATION_NAME_COLUMN = "Location name"
@@ -31,12 +25,10 @@ STATE_COLUMN = "State"
 
 
 # Private
-def _read_ESMI_location_information_csv():
-    location_information_files = helpers.getAllFilesFromFolderWithFilename(
-        GROUND_TRUTH_INPUT_PATH, LOCATION_INFORMATION_FILENAME
-    )
+def _read_ESMI_location_information_csv(input_folder):
+    location_information_files = helpers.getAllFilesFromFolderWithFilename(input_folder, LOCATION_INFORMATION_FILENAME)
     location_information_file = location_information_files[0]
-    location_information_file_path = f"{os.getcwd()}{GROUND_TRUTH_INPUT_PATH}/{location_information_file}"
+    location_information_file_path = f"{input_folder}/{location_information_file}"
 
     location_information_dataframe = pd.read_csv(
         location_information_file_path, parse_dates=[FROM_DATE_COLUMN, TO_DATE_COLUMN], dayfirst=True
@@ -65,8 +57,8 @@ def _get_ESMI_location_information_filtered_by_location(location_information_dat
 
 
 # Public
-def get_ESMI_location_information(indian_state, indian_state_location):
-    location_information_dataframe = _read_ESMI_location_information_csv()
+def get_ESMI_location_information(input_folder, indian_state, indian_state_location):
+    location_information_dataframe = _read_ESMI_location_information_csv(input_folder)
 
     # Filtering
     filtered_df = _get_ESMI_location_information_filtered_by_state(location_information_dataframe, indian_state)

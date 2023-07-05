@@ -2,38 +2,32 @@
 
 # This script takes in 'state' and 'location' args and creates a .csv of those
 # locations where there is no voltage for the amount of minuted defined in any given hour
-
-import sys, getopt, os
+import argparse
+import sys
 from nightlightsprocessing import helpers
 from . import constants
 import pandas as pd
 from .get_ESMI_location_information import get_ESMI_location_information
 
-################################################################################
-
-# Variables
-INPUT_FOLDER = constants.OO_GROUND_TRUTH_PATH
-OUTPUT_FOLDER = constants.O3_RELIABILITY_DATASETS_PATH
 COMMON_GROUND_TRUTH_FILENAME = constants.VOLTAGE_DATA_FILENAME
-
-# Constants
-# As the filenames are e.g. 'ESMI minute-wise voltage data 2014.csv', 'voltage data' will get all .csv's
-# and concatenate them together to use to check against.
+DESC = "This script will create a dataset from the ground truth data provided, and based on the state and location provided."
+# TODO: use centralised column names
 LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
 
 ################################################################################
 
 
-def _get_groundtruth_csvs_filtered_by(location_names):
-    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(INPUT_FOLDER, COMMON_GROUND_TRUTH_FILENAME)
+def _get_groundtruth_csvs_filtered_by(input_folder, location_names):
+    groundtruth_files = helpers.getAllFilesFromFolderWithFilename(input_folder, COMMON_GROUND_TRUTH_FILENAME)
 
     # Keys are created to allow knowing which original dataset each row came from
     frames = []
 
     for filename in groundtruth_files:
-        file_path = f"{os.getcwd()}{INPUT_FOLDER}/{filename}"
+        file_path = f"{input_folder}/{filename}"
 
+        # TODO: use centralised date format
         date_format = "%d-%m-%Y"
         dataframe = pd.read_csv(file_path, parse_dates=[DATE_COLUMN], date_format=date_format, dayfirst=True)
         # Force converting date fields to dates
@@ -63,11 +57,13 @@ def _get_filtered_by_zeros(dataframe):
         hour = row["Hour"]
 
         if hour == low_spread_hour_value:
-            if all(row[f"Min {minute}"] == 0 for minute in range(low_spread_minute_value, 60)):
+            if all(row[f"Min {minute}"] >= 240 for minute in range(low_spread_minute_value, 60)):
+                # if all(row[f"Min {minute}"] == 0 for minute in range(low_spread_minute_value, 60)):
                 filtered_rows.append(row)
         elif hour == high_spread_hour_value:
             # +1 as range with a single value starts at 0
-            if all(row[f"Min {minute}"] == 0 for minute in range(0, high_spread_minute_value)):
+            if all(row[f"Min {minute}"] >= 240 for minute in range(0, high_spread_minute_value)):
+                # if all(row[f"Min {minute}"] == 0 for minute in range(0, high_spread_minute_value)):
                 filtered_rows.append(row)
 
     # Create a new DataFrame with the filtered rows
@@ -96,34 +92,13 @@ def _get_filtered_by_both_hours(df):
     return filtered_df
 
 
-################################################################################
-
-
-def main(argv):
-    indian_state = None
-    indian_state_location = None
-
-    try:
-        opts, args = getopt.getopt(argv, "hs:l:", ["indian_state="])
-    except getopt.GetoptError:
-        print("Possible options: -s <indian_state> -l <indian_state_location>")
-        sys.exit(2)
-
-    for opt, arg in opts:
-        if opt == "-h":
-            print("Possible options: -s <indian_state> -l <indian_state_location>")
-            sys.exit()
-        elif opt in ("-s", "--indian_state"):
-            indian_state = arg
-        elif opt in ("-l", "--indian_state_location"):
-            indian_state_location = arg
-
-    location_names = get_ESMI_location_information(indian_state, indian_state_location)[LOCATION_NAME_COLUMN]
+def create_reliability_dataset(input_folder, destination, state, location):
+    location_names = get_ESMI_location_information(input_folder, state, location)[LOCATION_NAME_COLUMN]
     print("Finding location names...")
     print(location_names)
     # get all csv files
     # loop over them and filter them all by the given state
-    dataframes = _get_groundtruth_csvs_filtered_by(location_names)
+    dataframes = _get_groundtruth_csvs_filtered_by(input_folder, location_names)
     # combine them all into one spreadsheet
     result = pd.concat(dataframes)
     # Sort new dataframe by date
@@ -136,7 +111,9 @@ def main(argv):
     # Save to new csv called
     # This isn't the final dataset, but is the data for all locations filtered to only include
     # days when there are outages. It's written to csv to allow inspection.
-    write_full_location_results_file_path = f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - {indian_state} - {indian_state_location} - filtered.csv"
+    write_full_location_results_file_path = (
+        f"{destination}/ESMI minute-wise voltage data - {state} - {location} - filtered ON.csv"
+    )
     print("Writing full filtered data to to allow inspection at: ", write_full_location_results_file_path)
     result_filtered_by_outages_over_both_hours.to_csv(write_full_location_results_file_path)
 
@@ -152,10 +129,42 @@ def main(argv):
     result["Date day integer"] = result["Date"].dt.dayofyear
     result["Date year integer"] = result["Date"].dt.year
 
-    write_unique_date_location_combinations_path = f"{os.getcwd()}{OUTPUT_FOLDER}/ESMI minute-wise voltage data - {indian_state} - {indian_state_location} - filtered unique.csv"
+    write_unique_date_location_combinations_path = (
+        f"{destination}/ESMI minute-wise voltage data - {state} - {location} - filtered unique ON.csv"
+    )
     print("Writing unique locations and dates to: ", write_full_location_results_file_path)
     result.to_csv(write_unique_date_location_combinations_path)
 
 
+################################################################################
+
+
+def _main(argv):
+    parser = argparse.ArgumentParser(prog=argv[0], description=DESC)
+    parser.add_argument(
+        "-s",
+        "--state",
+        dest="state",
+        help="State in India",
+        required=True,
+    )
+    parser.add_argument("-l", "--location", dest="location", help="Location within State defined", required=True)
+    parser.add_argument(
+        "-d",
+        "--destination",
+        dest="destination",
+        help="Store directory structure in DIR",
+        required=True,
+    )
+    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
+
+    args = parser.parse_args(argv[1:])
+
+    create_reliability_dataset(args.input_folder, args.destination, args.state, args.location)
+
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    try:
+        sys.exit(_main(sys.argv))
+    except KeyboardInterrupt:
+        sys.exit(-1)
