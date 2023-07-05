@@ -9,10 +9,7 @@ import sys
 import asyncio
 import csv
 from . import helpers
-from . import constants
 
-
-################################################################################
 
 # you will need to replace the following line with the location of a
 # python web client library that can make HTTPS requests to an IP address.
@@ -20,17 +17,16 @@ USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r"
 # The following can be updated depending on your donwload requirements
 DATASET = "VNP46A2"
 DESC = "This script will recursively download all files if they don't exist from a LAADS URL and will store them to the specified path"
-
-# Constants
 # IMPORTANT: This script should only be used with the source destination below:
 SOURCE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000"
 
 ################################################################################
 
 
-async def _download_tile_for_days(destination, token, tile_descriptor, state, location, input_folder):
-    # TODO: make filename match up with output variable from script 03 and 07
-    filename = f"{constants.VOLTAGE_DATA_FILENAME} - {state} - {location} - filtered unique ON.csv"
+async def _download_tile_for_days(
+    destination, token, tile_descriptor, state, location, input_folder, grid_reliability
+):
+    filename = helpers.get_reliability_dataset_filename(state, location, grid_reliability)
 
     tasks = []
     # Read csv file
@@ -58,6 +54,9 @@ async def _download_tile_for_days(destination, token, tile_descriptor, state, lo
     for task in tasks:
         result = await task
         print(f"finished task {result}")
+
+
+################################################################################
 
 
 def _main(argv):
@@ -92,7 +91,13 @@ def _main(argv):
 
     asyncio.run(
         _download_tile_for_days(
-            args.destination, args.token, args.tile_descriptor, args.state, args.location, args.input_folder
+            args.destination,
+            args.token,
+            args.tile_descriptor,
+            args.state,
+            args.location,
+            args.input_folder,
+            args.grid_reliability,
         )
     )
 

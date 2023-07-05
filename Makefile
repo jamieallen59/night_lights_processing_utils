@@ -1,6 +1,6 @@
 # Variables
 STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
+LOCATION = "Bahraich"
 TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBUFMgT0F1dGgyIEF1dGhlbnRpY2F0b3IiLCJpYXQiOjE2ODU1MzQ3MjUsIm5iZiI6MTY4NTUzNDcyNSwiZXhwIjoxNzAxMDg2NzI1LCJ1aWQiOiJqYW1pZWFsbGVuNTkiLCJlbWFpbF9hZGRyZXNzIjoiamFtaWVhbGxlbjU5QGdtYWlsLmNvbSIsInRva2VuQ3JlYXRvciI6ImphbWllYWxsZW41OSJ9.Hh5uHl3N5TWKblonqNT1-UwsdIgYNbwCYLmPTme_wxw"
 # Data file paths
 OO_GROUND_TRUTH_PATH = "./data/00-ground-truth"
@@ -48,7 +48,7 @@ clean:
 # 03 Create ground truth dataset of low reliability date instances based on time of capture spreads
 # Note: may want to do this for multiple locations in your Area of Interest
 03-create-reliability-dataset:
-	python3 -m nightlightsprocessing.03_create_reliability_dataset --state "${STATE}" --location "${LOCATION}" --input_folder "${OO_GROUND_TRUTH_PATH}" --destination "${O3_RELIABILITY_DATASETS_PATH}"
+	python3 -m nightlightsprocessing.03_create_reliability_dataset --state "${STATE}" --location "${LOCATION}" --input_folder "${OO_GROUND_TRUTH_PATH}" --destination "${O3_RELIABILITY_DATASETS_PATH}" --grid-reliability "${GRID_RELIABILITY}"
 
 # 04 dowload A2 images based on low reliability ground truth dataset
 04-download-VNP46A2-instances:
@@ -64,7 +64,7 @@ clean:
 
 # 07 crop processed images based on ground truth data
 07-crop-images:
-		python3 -m nightlightsprocessing.07_crop_images --reliability-dataset-input-folder "${O3_RELIABILITY_DATASETS_PATH}" --vnp46a2-tif-input-folder "${O5_PROCESSED_VNP46A2_IMAGES}" --shapefile-input-folder "${O6_LOCATION_SHAPEFILES}" --destination "${O7_CROPPED_IMAGES}/buffer-{BUFFER_DISTANCE_MILES}-miles" --buffer "${BUFFER_DISTANCE_MILES}" --state "${STATE}" --location "${LOCATION}" --grid-reliability "${GRID_RELIABILITY}"
+		python3 -m nightlightsprocessing.07_crop_images --reliability-dataset-input-folder "${O3_RELIABILITY_DATASETS_PATH}" --vnp46a2-tif-input-folder "${O5_PROCESSED_VNP46A2_IMAGES}" --shapefile-input-folder "${O6_LOCATION_SHAPEFILES}" --destination "${O7_CROPPED_IMAGES}/{LOCATION}-buffer-{BUFFER_DISTANCE_MILES}-miles" --buffer "${BUFFER_DISTANCE_MILES}" --state "${STATE}" --location "${LOCATION}" --grid-reliability "${GRID_RELIABILITY}"
 
 
 # TODO: should turn all this to one entry point with script arguements (assuming it stays as one package)

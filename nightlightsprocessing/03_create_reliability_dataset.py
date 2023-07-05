@@ -46,7 +46,7 @@ def _get_groundtruth_csvs_filtered_by(input_folder, location_names):
 # defined by the 'amount' arg.
 # Low = 19:36:07
 # High = 20:35:26
-def _get_filtered_by_zeros(dataframe):
+def _get_filtered_by_zeros(dataframe, grid_reliability):
     low_spread_hour_value = 19
     low_spread_minute_value = 36
     high_spread_hour_value = 20
@@ -57,13 +57,22 @@ def _get_filtered_by_zeros(dataframe):
         hour = row["Hour"]
 
         if hour == low_spread_hour_value:
-            if all(row[f"Min {minute}"] >= 240 for minute in range(low_spread_minute_value, 60)):
-                # if all(row[f"Min {minute}"] == 0 for minute in range(low_spread_minute_value, 60)):
+            conditional = (
+                all(row[f"Min {minute}"] >= 240 for minute in range(low_spread_minute_value, 60))
+                if grid_reliability == "HIGH"
+                else all(row[f"Min {minute}"] == 0 for minute in range(low_spread_minute_value, 60))
+            )
+
+            if conditional:
                 filtered_rows.append(row)
         elif hour == high_spread_hour_value:
-            # +1 as range with a single value starts at 0
-            if all(row[f"Min {minute}"] >= 240 for minute in range(0, high_spread_minute_value)):
-                # if all(row[f"Min {minute}"] == 0 for minute in range(0, high_spread_minute_value)):
+            conditional = (
+                all(row[f"Min {minute}"] >= 240 for minute in range(0, high_spread_minute_value))
+                if grid_reliability == "HIGH"
+                else all(row[f"Min {minute}"] == 0 for minute in range(0, high_spread_minute_value))
+            )
+
+            if conditional:
                 filtered_rows.append(row)
 
     # Create a new DataFrame with the filtered rows
@@ -92,7 +101,7 @@ def _get_filtered_by_both_hours(df):
     return filtered_df
 
 
-def create_reliability_dataset(input_folder, destination, state, location):
+def create_reliability_dataset(input_folder, destination, state, location, grid_reliability):
     location_names = get_ESMI_location_information(input_folder, state, location)[LOCATION_NAME_COLUMN]
     print("Finding location names...")
     print(location_names)
@@ -103,23 +112,25 @@ def create_reliability_dataset(input_folder, destination, state, location):
     result = pd.concat(dataframes)
     # Sort new dataframe by date
     result = result.sort_values("Date", ascending=True, kind="stable", na_position="first", ignore_index=True)
-    # print(type(result.iloc[1, 5]))
 
     result_filtered_by_certain_hours = _get_filtered_by_hours(result)
-    result_filtered_by_zeros = _get_filtered_by_zeros(result_filtered_by_certain_hours)
+    result_filtered_by_zeros = _get_filtered_by_zeros(result_filtered_by_certain_hours, grid_reliability)
     result_filtered_by_outages_over_both_hours = _get_filtered_by_both_hours(result_filtered_by_zeros)
-    # Save to new csv called
-    # This isn't the final dataset, but is the data for all locations filtered to only include
+
+    # --- UNCOMMENT TO DEBUG ---
+    # Saves to new csv. This isn't the final dataset, but is the data for all locations filtered to only include
     # days when there are outages. It's written to csv to allow inspection.
-    write_full_location_results_file_path = (
-        f"{destination}/ESMI minute-wise voltage data - {state} - {location} - filtered ON.csv"
-    )
-    print("Writing full filtered data to to allow inspection at: ", write_full_location_results_file_path)
-    result_filtered_by_outages_over_both_hours.to_csv(write_full_location_results_file_path)
+    # write_full_location_results_file_path = (
+    #     f"{destination}/ESMI minute-wise voltage data - {state} - {location} - filtered {grid_reliability}.csv"
+    # )
+    # write_full_location_results_file_path = helpers.get_reliability_dataset_filename(state, location, grid_reliability)
+
+    # print("Writing full filtered data to to allow inspection at: ", write_full_location_results_file_path)
+    # result_filtered_by_outages_over_both_hours.to_csv(write_full_location_results_file_path)
+    # --- UNCOMMENT TO DEBUG ---
 
     # Then here we work on the data further to get individual locations and dates from the data.
     # This is what we need to know which dates for VNP46A2 images to download + the locations needed to crop on that date.
-
     date_location_counts = result_filtered_by_outages_over_both_hours.groupby(["Date", "Location name"]).size()
     # Filter the DataFrame to include only rows with at least two instances of the date
     filtered_dates = date_location_counts[date_location_counts >= 2].reset_index()
@@ -130,9 +141,10 @@ def create_reliability_dataset(input_folder, destination, state, location):
     result["Date year integer"] = result["Date"].dt.year
 
     write_unique_date_location_combinations_path = (
-        f"{destination}/ESMI minute-wise voltage data - {state} - {location} - filtered unique ON.csv"
+        f"{destination}/{helpers.get_reliability_dataset_filename(state, location, grid_reliability)}"
     )
-    print("Writing unique locations and dates to: ", write_full_location_results_file_path)
+
+    print("Writing unique locations and dates to: ", write_unique_date_location_combinations_path)
     result.to_csv(write_unique_date_location_combinations_path)
 
 
@@ -156,11 +168,18 @@ def _main(argv):
         help="Store directory structure in DIR",
         required=True,
     )
+    parser.add_argument(
+        "-gr",
+        "--grid-reliability",
+        dest="grid_reliability",
+        help="A value either LOW or HIGH to represent the reliability of the grid",
+        required=True,
+    )
     parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
 
     args = parser.parse_args(argv[1:])
 
-    create_reliability_dataset(args.input_folder, args.destination, args.state, args.location)
+    create_reliability_dataset(args.input_folder, args.destination, args.state, args.location, args.grid_reliability)
 
 
 if __name__ == "__main__":

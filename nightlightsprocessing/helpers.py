@@ -7,6 +7,7 @@ import os.path
 import shutil
 import sys
 from io import StringIO
+from . import constants
 
 ################################################################################
 
@@ -49,6 +50,10 @@ def getAllFilesFromFolderWithFilename(folder, filename):
 # https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html
 def drop_filtered_table_index(filtered_table):
     return filtered_table.reset_index(drop=True)
+
+
+def get_reliability_dataset_filename(state, location, grid_reliability):
+    return f"{constants.VOLTAGE_DATA_FILENAME} - {state} - {location} - filtered unique {grid_reliability}.csv"
 
 
 # https://ladsweb.modaps.eosdis.nasa.gov/learn/how-to-use-laads-daac-post-processing-tools/

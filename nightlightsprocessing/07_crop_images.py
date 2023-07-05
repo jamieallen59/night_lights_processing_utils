@@ -9,13 +9,11 @@ import argparse
 import earthpy.spatial as es
 import fiona
 import geopandas as gpd
-from . import constants
 from . import helpers
 
 # https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_image
 
 DESC = "This script crops all images found in the given VNP46A2 file, based on data from previous script outputs"
-
 
 ################################################################################
 
@@ -59,7 +57,7 @@ def crop_images(
     location,
     grid_reliability,
 ):
-    filename = f"{constants.VOLTAGE_DATA_FILENAME} - {state} - {location} - filtered unique {grid_reliability}.csv"
+    filename = helpers.get_reliability_dataset_filename(state, location, grid_reliability)
 
     # Loop through date and time instances
     # Read csv file
