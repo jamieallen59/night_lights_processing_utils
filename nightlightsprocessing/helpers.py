@@ -1,4 +1,3 @@
-# from __future__ import division, print_function, absolute_import, unicode_literals
 import os
 import rasterio
 from datetime import datetime
@@ -32,9 +31,7 @@ def filterFilesThatInclude(subString, filenames):
 # TODO: should be able to remove filter capability from this now as directories are
 # structured differently. Or make 'filename' arg optional.
 def getAllFilesFromFolderWithFilename(folder, filename):
-    owd = os.getcwd()
-
-    allFiles = os.listdir(f"{owd}{folder}")
+    allFiles = os.listdir(folder)
 
     selectedFiles = filterFilesThatInclude(filename, allFiles)
 

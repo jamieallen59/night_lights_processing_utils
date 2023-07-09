@@ -6,7 +6,7 @@
 # These locations can then be used to extract data rom the various ESMI minute-wise voltage data .csv's
 
 
-from nightlightsprocessing import helpers
+from . import helpers
 import pandas as pd
 
 

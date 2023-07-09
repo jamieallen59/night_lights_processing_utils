@@ -9,6 +9,7 @@ DESC = "This script creates a shapefile based on the name, logitude and latitude
 
 ################################################################################
 
+# --- Lucknow ---
 # name = "Aishbagh-Lucknow"
 # longitude = 80.9039054
 # latitude = 26.8412685
@@ -25,9 +26,41 @@ DESC = "This script creates a shapefile based on the name, logitude and latitude
 # longitude = 80.9047309
 # latitude = 26.7869682
 
-name = "Vikas Nagar- Lucknow [Offline]"
-longitude = 80.9540233
-latitude = 26.8976618
+# name = "Vikas Nagar- Lucknow [Offline]"
+# longitude = 80.9540233
+# latitude = 26.8976618
+
+# --- Bahraich ---
+# name = "Bahadurpur-Bahraich"
+# longitude = 81.5933001
+# latitude = 27.546632
+# name = "Bardaha-Bahraich"
+# longitude = 81.3921704
+# latitude = 27.8080485
+# name = "Huzurpur-Bahraich"
+# longitude = 81.6586352
+# latitude = 27.3481097
+# name = "Jagatapur-Bahraich"
+# longitude = 81.5969203
+# latitude = 27.5452547
+# name = "Kanjaya-Bahraich"
+# longitude = 81.6582102
+# latitude = 27.2606896
+# name = "Kurmaura-Bahraich"
+# longitude = 81.5929152
+# latitude = 27.1746395
+# name = "Mahasi-Bahraich" # can't find on map
+# longitude = 00
+# latitude = 00
+# name = "Mihinpurwa-Bahraich"
+# longitude = 81.2478366
+# latitude = 28.0676455
+name = "Puraini-Bahraich"
+longitude = 81.5782502
+latitude = 27.2847546
+# name = "Samariya-Bahraich [Offline]" # can't find on map
+# longitude = 00
+# latitude = 00
 
 
 def create_shapefile(destination):
@@ -51,7 +84,6 @@ def _main(argv):
         help="Store directory structure in DIR",
         required=True,
     )
-    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
 
     args = parser.parse_args(argv[1:])
 

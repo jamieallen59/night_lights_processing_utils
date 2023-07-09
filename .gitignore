@@ -21,3 +21,4 @@ data/07-cropped-images/*
 *.pyc
 nightlights_processing.egg-info
 venv
+.env

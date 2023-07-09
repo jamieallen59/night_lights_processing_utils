@@ -3,6 +3,7 @@
 # Taken and modified from:
 # https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python
 # The script can be run to download different datasets from ladsweb.modaps.eosdis.nasa.gov
+import os
 
 import argparse
 import sys
@@ -46,11 +47,18 @@ async def _download_tile_for_days(
             print("date_and_location_instance", date_and_location_instance)
 
             url = f"{SOURCE_URL}/{DATASET}/{year_integer}/{date_day_integer}"
-            print(f"starting task using url {url}")
             file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, tile_descriptor)
 
-            tasks.append(asyncio.create_task(helpers.sync(url, destination, token, file_details_to_download)))
+            try:
+                path = os.path.join(destination, file_details_to_download["name"])
 
+                if os.path.exists(path):
+                    print("Skipping, as already downloaded here:", path)
+                else:
+                    print(f"starting task using url {url}")
+                    tasks.append(asyncio.create_task(helpers.sync(url, destination, token, file_details_to_download)))
+            except:
+                print("Some exception!!!")
     for task in tasks:
         result = await task
         print(f"finished task {result}")

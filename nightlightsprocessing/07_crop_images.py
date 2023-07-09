@@ -66,12 +66,13 @@ def crop_images(
     )
     # Should only be one file
     groundtruth_date_and_time_instances_csv = (
-        f".{reliability_dataset_input_folder}/{groundtruth_date_and_time_instances_csvs[0]}"
+        f"{reliability_dataset_input_folder}/{groundtruth_date_and_time_instances_csvs[0]}"
     )
 
     with open(groundtruth_date_and_time_instances_csv, "r") as file:
         reader = csv.reader(file)
         data = list(reader)
+        failed_clippings = 0
 
         for _, date_and_location_instance in enumerate(data[1:]):  # [1:] to skip the header row
             location_name = date_and_location_instance[1]
@@ -84,15 +85,15 @@ def crop_images(
 
             filename_filter = f"vnp46a2-a{year_integer}{date_day_integer}"
 
-            vnp46a2_tif_file_paths = helpers.getAllFilesFromFolderWithFilename(
-                vnp46a2_tif_input_folder, filename_filter
-            )
-            vnp46a2_tif_file_path = f"{vnp46a2_tif_input_folder}/{vnp46a2_tif_file_paths[0]}"  # Should only be one .tif, so take the first one
-            print("vnp46a2_tif_file_path", vnp46a2_tif_file_path)
-            print("location_name", location_name)
-            print("date", date)
-
             try:
+                vnp46a2_tif_file_paths = helpers.getAllFilesFromFolderWithFilename(
+                    vnp46a2_tif_input_folder, filename_filter
+                )
+                vnp46a2_tif_file_path = f"{vnp46a2_tif_input_folder}/{vnp46a2_tif_file_paths[0]}"  # Should only be one .tif, so take the first one
+
+                print("vnp46a2_tif_file_path", vnp46a2_tif_file_path)
+                print("location_name", location_name)
+                print("date", date)
                 # Get shape file by location name
                 location_path = f"{shapefile_input_folder}/{location_name}.shp"
                 location_raw = gpd.read_file(location_path)
@@ -110,8 +111,15 @@ def crop_images(
 
                 clip_boundary = location
                 clip_vnp46a2(vnp46a2_tif_file_path, clip_boundary, location_name, destination, grid_reliability)
+            except RuntimeError as e:
+                failed_clippings += 1
+                print("Failed to read image:", e)
             except fiona.errors.DriverError as e:
+                failed_clippings += 1
                 print("Failed to read shapefile image", e)
+
+        print("All images count: ", len(data[1:]))
+        print("Failed clippings count: ", failed_clippings)
 
 
 ################################################################################
@@ -134,7 +142,7 @@ def _main(argv):
         required=True,
     )
     parser.add_argument(
-        "-s",
+        "-si",
         "--shapefile-input-folder",
         dest="shapefile_input_folder",
         help="The directory of your shapefiles",
