@@ -5,46 +5,56 @@ import rasterio
 import csv
 import sys
 import argparse
+import numpy as np
 
 import earthpy.spatial as es
 import fiona
 import geopandas as gpd
 from . import helpers
 
+# Need to run this file once for each reliability setting e.g. once for LOW and once for HIGH
 # https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_image
-
 DESC = "This script crops all images found in the given VNP46A2 file, based on data from previous script outputs"
+
+# Unable to find the whereabouts of these, so have not created the shapefile needed for them
+# so filtering them out here to have cleaner data.
+locations_to_remove = [
+    # Bahraich
+    "Samariya-Bahraich [Offline]",
+    "Mahasi-Bahraich",
+    "Bashirganj Bahraich",
+    "Nai Basti Bahraich",
+    "Kanoongopura Bahraich",
+    "Khutehna-Bahraich [Offline]",
+    "Dhanwa Ramsahaypurwa Bahraich [Offline]",
+    "Sarsa-Bahraich [Offline]",
+    "Nazirpura-Bahraich",
+    # Lucknow
+    "Jankipuram Lucknow",
+    "Kapoorthala-Lucknow",
+]
 
 ################################################################################
 
 
-def clip_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder, grid_reliability):
+def get_clipped_vnp46a2(geotiff_path, clip_boundary, location_name, output_folder, grid_reliability):
     print(f"Started clipping: Clip {geotiff_path} " f"to {location_name} boundary")
-    try:
-        print("Clipping image...")
-        # Clip image (return clipped array and new metadata)
-        with rasterio.open(geotiff_path) as src:
-            cropped_image, cropped_metadata = es.crop_image(raster=src, geoms=clip_boundary)
+    print("Clipping image...")
+    # Clip image (return clipped array and new metadata)
+    with rasterio.open(geotiff_path) as src:
+        cropped_image, cropped_metadata = es.crop_image(raster=src, geoms=clip_boundary)
 
-        print("Setting export name...")
-        export_name = helpers.get_tif_to_clipped_export_name(
-            filepath=geotiff_path, location_name=location_name, reliability=grid_reliability
-        )
+    export_name = helpers.get_tif_to_clipped_export_name(
+        filepath=geotiff_path, location_name=location_name, reliability=grid_reliability
+    )
 
-        print("Exporting to GeoTiff...", export_name)
-        output_path = os.path.join(output_folder, export_name)
-        print("Output path: ", output_path)
-        helpers.export_array(
-            array=cropped_image[0],
-            output_path=output_path,
-            metadata=cropped_metadata,
-        )
-    except Exception as error:
-        message = print(f"Clipping failed: {error}\n")
-    else:
-        message = print(f"Completed clipping: Clip {os.path.basename(geotiff_path)} " f"to {location_name} boundary\n")
+    print(f"Completed clipping: Clip {os.path.basename(geotiff_path)} " f"to {location_name} boundary\n")
+    return cropped_image[0], cropped_metadata, export_name
 
-    return message
+
+all_values_nan_error = "All pixel values were NaN"
+allowed_nan_percentage = 50
+over_percentage_of_values_nan_error = f"Over {allowed_nan_percentage}% of image was NaN, so discarding image"
 
 
 def crop_images(
@@ -58,7 +68,6 @@ def crop_images(
     grid_reliability,
 ):
     filename = helpers.get_reliability_dataset_filename(state, location, grid_reliability)
-
     # Loop through date and time instances
     # Read csv file
     groundtruth_date_and_time_instances_csvs = helpers.getAllFilesFromFolderWithFilename(
@@ -72,9 +81,19 @@ def crop_images(
     with open(groundtruth_date_and_time_instances_csv, "r") as file:
         reader = csv.reader(file)
         data = list(reader)
-        failed_clippings = 0
 
-        for _, date_and_location_instance in enumerate(data[1:]):  # [1:] to skip the header row
+        # Create a new list of locations that will not contain the specific locations
+        filtered_data = []
+        for location in data:
+            if location[1] not in locations_to_remove:
+                filtered_data.append(location)
+
+        failed_clippings = 0
+        all_nan_images = 0
+        over_percentage_nan_images = 0
+        successful_clippings = 0
+
+        for _, date_and_location_instance in enumerate(filtered_data[1:]):  # [1:] to skip the header row
             location_name = date_and_location_instance[1]
             date = date_and_location_instance[2]
             date_day_integer = "{:03d}".format(
@@ -103,6 +122,11 @@ def crop_images(
                 lucknow_unit_metres = location_raw.to_crs(crs=32634)
 
                 buffer_distance_metres = int(buffer) * 1609.34  # Convert miles to meters
+
+                # For if you don't want a circular buffer.
+                # # Note cap_style: round = 1, flat = 2, square = 3
+                # buffer = lucknow_unit_metres.buffer(buffer_distance_metres, cap_style = 3)
+
                 buffered_location = lucknow_unit_metres.buffer(buffer_distance_metres)
 
                 # Then change it back to allow the crop images
@@ -110,16 +134,65 @@ def crop_images(
                 location = buffered_location.to_crs(crs=4326)
 
                 clip_boundary = location
-                clip_vnp46a2(vnp46a2_tif_file_path, clip_boundary, location_name, destination, grid_reliability)
+
+                cropped_image, cropped_metadata, export_name = get_clipped_vnp46a2(
+                    vnp46a2_tif_file_path, clip_boundary, location_name, destination, grid_reliability
+                )
+
+                # Filtering for all NaN values + over a % NaN values
+                all_values_are_nan = np.isnan(cropped_image).all()
+                nan_count = np.isnan(cropped_image).sum()
+                non_nan_count = cropped_image.size - nan_count
+
+                nan_percentage = (np.isnan(cropped_image).sum() / cropped_image.size) * 100
+
+                print(cropped_image)
+                print("All NaN?", all_values_are_nan)
+                print("Non-nan count", non_nan_count)
+                print("Nan count", nan_count)
+                print("Nan %", nan_percentage)
+
+                if all_values_are_nan:
+                    raise ValueError(all_values_nan_error)
+                if nan_percentage > allowed_nan_percentage:
+                    raise ValueError(over_percentage_of_values_nan_error)
+
+                print("Exporting to GeoTiff...", export_name)
+                output_path = os.path.join(destination, export_name)
+                print("Output path: ", output_path)
+                helpers.export_array(
+                    array=cropped_image,
+                    output_path=output_path,
+                    metadata=cropped_metadata,
+                )
+                successful_clippings += 1
+
             except RuntimeError as e:
                 failed_clippings += 1
                 print("Failed to read image:", e)
             except fiona.errors.DriverError as e:
                 failed_clippings += 1
                 print("Failed to read shapefile image", e)
+            except ValueError as e:
+                if str(e) == all_values_nan_error:
+                    all_nan_images += 1
+                    print("ValueError HERE", e)
+                elif str(e) == over_percentage_of_values_nan_error:
+                    over_percentage_nan_images += 1
+                    print("ValueError HERE", e)
+                else:
+                    # Should never hit this
+                    print("WARNING: Other Value Error", e)
+            except Exception as error:
+                failed_clippings += 1
+                print(f"Clipping failed: {error}\n")
 
+        print("----- End clippings -----")
         print("All images count: ", len(data[1:]))
         print("Failed clippings count: ", failed_clippings)
+        print("Successful clippings count: ", successful_clippings)
+        print("All nan images count: ", all_nan_images)
+        print(f">{allowed_nan_percentage}% nan images count: ", over_percentage_nan_images)
 
 
 ################################################################################
