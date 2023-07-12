@@ -4,7 +4,7 @@
 # https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python
 # The script can be run to download different datasets from ladsweb.modaps.eosdis.nasa.gov
 import os
-
+import glob
 import argparse
 import sys
 import asyncio
@@ -24,6 +24,16 @@ SOURCE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000"
 ################################################################################
 
 
+def check_for_files(filepath):
+    for filepath_object in glob.glob(filepath):
+        if os.path.isfile(filepath_object):
+            return True
+
+    return False
+
+
+# TODO: Could make an override to concatenate all files and download all A2 images
+# for instances defined in whole 03_create_reliability_dataset folder.
 async def _download_tile_for_days(
     destination, token, tile_descriptor, state, location, input_folder, grid_reliability
 ):
@@ -47,10 +57,21 @@ async def _download_tile_for_days(
             print("date_and_location_instance", date_and_location_instance)
 
             url = f"{SOURCE_URL}/{DATASET}/{year_integer}/{date_day_integer}"
-            file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, tile_descriptor)
+
+            # Check if we have the file downloaded manually first, to avoid
+            # slow get_file_details_for_selected_tile step (which hits ladsweb site).
+            # If any local file includes the filter options below, skip the step.
+            local_filename_descriptor_check = (
+                f"{destination}/{DATASET}.A{year_integer}{date_day_integer}.{tile_descriptor}*"
+            )
+            if check_for_files(local_filename_descriptor_check):
+                print("Skipping, as already downloaded here:", local_filename_descriptor_check)
+                continue
 
             try:
-                path = os.path.join(destination, file_details_to_download["name"])
+                file_details_to_download = helpers.get_file_details_for_selected_tile(url, token, tile_descriptor)
+                name = file_details_to_download["name"]
+                path = os.path.join(destination, name)
 
                 if os.path.exists(path):
                     print("Skipping, as already downloaded here:", path)
@@ -58,7 +79,10 @@ async def _download_tile_for_days(
                     print(f"starting task using url {url}")
                     tasks.append(asyncio.create_task(helpers.sync(url, destination, token, file_details_to_download)))
             except:
-                print("Some exception!!!")
+                print("Did not add task for")
+                print("Url: ", url)
+                print("File details: ", file_details_to_download)
+
     for task in tasks:
         result = await task
         print(f"finished task {result}")

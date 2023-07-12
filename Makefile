@@ -13,7 +13,7 @@ O6_LOCATION_SHAPEFILES = "./data/06-location-shapefiles"
 O7_CROPPED_IMAGES = "./data/07-cropped-images"
 
 STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
+LOCATION = "Bahraich"
 TILE_DESCRIPTOR = "h26v06" # A MODIS tile descriptor
 GRID_RELIABILITY = "LOW" # Either LOW or HIGH
 BUFFER_DISTANCE_MILES = "1"
@@ -38,7 +38,7 @@ BUFFER_DISTANCE_MILES = "1"
 
 # 04 dowload A2 images based on low reliability ground truth dataset
 04-download-VNP46A2-instances:
-		python3 -m nightlightsprocessing.04_downlad_VNP46A2_instances --destination ${O4_VNP46A2_H5_PATH} --token ${TOKEN} --tile-descriptor ${TILE_DESCRIPTOR} --state ${STATE} --location ${LOCATION} --grid-reliability ${GRID_RELIABILITY} --input-folder ${O3_RELIABILITY_DATASETS_PATH}
+		python3 -m nightlightsprocessing.04_download_VNP46A2_instances --destination ${O4_VNP46A2_H5_PATH} --token ${TOKEN} --tile-descriptor ${TILE_DESCRIPTOR} --state ${STATE} --location ${LOCATION} --grid-reliability ${GRID_RELIABILITY} --input-folder ${O3_RELIABILITY_DATASETS_PATH}
 
 # 05 process all A2 images with the given masks
 05-process-VNP46A2-images:

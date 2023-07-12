@@ -1,13 +1,16 @@
 import os
 import rasterio
-from datetime import datetime
+import csv
 import os
 import os.path
 import shutil
 import sys
+from datetime import datetime
 from io import StringIO
 from . import constants
 
+
+# TODO: find a way to organise better
 ################################################################################
 
 # Variables
@@ -115,14 +118,13 @@ def _filter_only_tiles(all_files_content, tile_descriptor):
 
 def get_file_details_for_selected_tile(src, token, tile_descriptor):
     try:
-        import csv
-
         #  Reads a .csv file which represents all the data from the url given
         all_tiles_for_one_day = [
             f for f in csv.DictReader(StringIO(geturl("%s.csv" % src, token)), skipinitialspace=True)
         ]
         # filter for only the tiles needed
         file_details_for_selected_tile = _filter_only_tiles(all_tiles_for_one_day, tile_descriptor)
+
         # Because there's only one tile image per day, so should only ever be one returned
         first_and_only_item = file_details_for_selected_tile[0]
 
@@ -136,7 +138,7 @@ def get_file_details_for_selected_tile(src, token, tile_descriptor):
     return None
 
 
-# Download helpers
+# --- Download helpers ---
 # This is the choice of last resort, when other attempts have failed
 def getcURL(url, headers=None, out=None):
     import subprocess

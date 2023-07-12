@@ -14,9 +14,11 @@ DESC = "This script will create a dataset from the ground truth data provided, a
 # TODO: use centralised column names
 LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
+# TODO: move to Makefile?
 LOW_RELIABILITY_VOLTAGE = 0
 HIGH_RELIABILITY_VOLTAGE = 170
 DEBUG = False
+
 ################################################################################
 
 
@@ -51,6 +53,7 @@ def _get_groundtruth_csvs_filtered_by(input_folder, location_names):
 
 
 def _get_filtered_by_zeros(dataframe, grid_reliability):
+    # TODO: move to Makefile?
     low_spread_hour_value = 19
     low_spread_minute_value = 36
     high_spread_hour_value = 20
@@ -62,10 +65,14 @@ def _get_filtered_by_zeros(dataframe, grid_reliability):
 
         if hour == low_spread_hour_value:
             conditional = (
-                all(row[f"Min {minute}"] >= HIGH_RELIABILITY_VOLTAGE for minute in range(low_spread_minute_value, 60))
+                all(
+                    int(row[f"Min {minute}"]) >= HIGH_RELIABILITY_VOLTAGE
+                    for minute in range(low_spread_minute_value, 60)
+                )
                 if grid_reliability == "HIGH"
                 else all(
-                    row[f"Min {minute}"] == LOW_RELIABILITY_VOLTAGE for minute in range(low_spread_minute_value, 60)
+                    int(row[f"Min {minute}"]) == LOW_RELIABILITY_VOLTAGE
+                    for minute in range(low_spread_minute_value, 60)
                 )
             )
 
@@ -73,10 +80,14 @@ def _get_filtered_by_zeros(dataframe, grid_reliability):
                 filtered_rows.append(row)
         elif hour == high_spread_hour_value:
             conditional = (
-                all(row[f"Min {minute}"] >= HIGH_RELIABILITY_VOLTAGE for minute in range(0, high_spread_minute_value))
+                all(
+                    int(row[f"Min {minute}"]) >= HIGH_RELIABILITY_VOLTAGE
+                    for minute in range(0, high_spread_minute_value)
+                )
                 if grid_reliability == "HIGH"
                 else all(
-                    row[f"Min {minute}"] == LOW_RELIABILITY_VOLTAGE for minute in range(0, high_spread_minute_value)
+                    int(row[f"Min {minute}"]) == LOW_RELIABILITY_VOLTAGE
+                    for minute in range(0, high_spread_minute_value)
                 )
             )
 

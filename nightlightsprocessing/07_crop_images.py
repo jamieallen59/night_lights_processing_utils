@@ -5,10 +5,9 @@ import rasterio
 import csv
 import sys
 import argparse
-import numpy as np
-
-import earthpy.spatial as es
 import fiona
+import numpy as np
+import earthpy.spatial as es
 import geopandas as gpd
 from . import helpers
 
@@ -18,7 +17,7 @@ DESC = "This script crops all images found in the given VNP46A2 file, based on d
 
 # Unable to find the whereabouts of these, so have not created the shapefile needed for them
 # so filtering them out here to have cleaner data.
-locations_to_remove = [
+LOCATIONS_TO_REMOVE = [
     # Bahraich
     "Samariya-Bahraich [Offline]",
     "Mahasi-Bahraich",
@@ -32,7 +31,18 @@ locations_to_remove = [
     # Lucknow
     "Jankipuram Lucknow",
     "Kapoorthala-Lucknow",
+    # Sitapur
+    "Bhadupur Sidhauli",
+    "Bhattha Mehmoodabad",
+    "Ichauli- Sitapur",
+    "Khindaura- Sitapur",
+    "Manwan- Sitapur",
+    "Ramuapur Mahmoodabad",
+    "Sikandarabad - Sitapur",
+    "Tedwadih- Sitapur",
 ]
+ALLOWED_NAN_PERCENTAGE = 80
+OVER_PERCENTAGE_OF_VALUES_NAN_ERROR = f"Over {ALLOWED_NAN_PERCENTAGE}% of image was NaN, so discarding image"
 
 ################################################################################
 
@@ -50,11 +60,6 @@ def get_clipped_vnp46a2(geotiff_path, clip_boundary, location_name, output_folde
 
     print(f"Completed clipping: Clip {os.path.basename(geotiff_path)} " f"to {location_name} boundary\n")
     return cropped_image[0], cropped_metadata, export_name
-
-
-all_values_nan_error = "All pixel values were NaN"
-allowed_nan_percentage = 50
-over_percentage_of_values_nan_error = f"Over {allowed_nan_percentage}% of image was NaN, so discarding image"
 
 
 def crop_images(
@@ -85,11 +90,10 @@ def crop_images(
         # Create a new list of locations that will not contain the specific locations
         filtered_data = []
         for location in data:
-            if location[1] not in locations_to_remove:
+            if location[1] not in LOCATIONS_TO_REMOVE:
                 filtered_data.append(location)
 
         failed_clippings = 0
-        all_nan_images = 0
         over_percentage_nan_images = 0
         successful_clippings = 0
 
@@ -139,23 +143,18 @@ def crop_images(
                     vnp46a2_tif_file_path, clip_boundary, location_name, destination, grid_reliability
                 )
 
-                # Filtering for all NaN values + over a % NaN values
-                all_values_are_nan = np.isnan(cropped_image).all()
+                # Filtering for over a % NaN values
                 nan_count = np.isnan(cropped_image).sum()
                 non_nan_count = cropped_image.size - nan_count
-
                 nan_percentage = (np.isnan(cropped_image).sum() / cropped_image.size) * 100
 
                 print(cropped_image)
-                print("All NaN?", all_values_are_nan)
                 print("Non-nan count", non_nan_count)
                 print("Nan count", nan_count)
                 print("Nan %", nan_percentage)
 
-                if all_values_are_nan:
-                    raise ValueError(all_values_nan_error)
-                if nan_percentage > allowed_nan_percentage:
-                    raise ValueError(over_percentage_of_values_nan_error)
+                if nan_percentage > ALLOWED_NAN_PERCENTAGE:
+                    raise ValueError(OVER_PERCENTAGE_OF_VALUES_NAN_ERROR)
 
                 print("Exporting to GeoTiff...", export_name)
                 output_path = os.path.join(destination, export_name)
@@ -174,10 +173,7 @@ def crop_images(
                 failed_clippings += 1
                 print("Failed to read shapefile image", e)
             except ValueError as e:
-                if str(e) == all_values_nan_error:
-                    all_nan_images += 1
-                    print("ValueError HERE", e)
-                elif str(e) == over_percentage_of_values_nan_error:
+                if str(e) == OVER_PERCENTAGE_OF_VALUES_NAN_ERROR:
                     over_percentage_nan_images += 1
                     print("ValueError HERE", e)
                 else:
@@ -191,8 +187,7 @@ def crop_images(
         print("All images count: ", len(data[1:]))
         print("Failed clippings count: ", failed_clippings)
         print("Successful clippings count: ", successful_clippings)
-        print("All nan images count: ", all_nan_images)
-        print(f">{allowed_nan_percentage}% nan images count: ", over_percentage_nan_images)
+        print(f">{ALLOWED_NAN_PERCENTAGE}% nan images count: ", over_percentage_nan_images)
 
 
 ################################################################################
