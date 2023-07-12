@@ -72,6 +72,7 @@ def crop_images(
     location,
     grid_reliability,
 ):
+    # TODO: should do both HIGH and LOW automatically, rather than take grid_reliability
     filename = helpers.get_reliability_dataset_filename(state, location, grid_reliability)
     # Loop through date and time instances
     # Read csv file
@@ -159,6 +160,7 @@ def crop_images(
                 print("Exporting to GeoTiff...", export_name)
                 output_path = os.path.join(destination, export_name)
                 print("Output path: ", output_path)
+                # TODO: should aito create the directorty if not there
                 helpers.export_array(
                     array=cropped_image,
                     output_path=output_path,

@@ -8,7 +8,8 @@ from sklearn.model_selection import train_test_split
 from tensorflow import keras
 from tensorflow.keras import layers
 
-temp_ignore_list = ["Lucknow-buffer-1-miles"]
+TEMP_IGNORE_LIST = ["Lucknow-buffer-1-miles", "Sitapur-buffer-1-miles"]
+TEST_SIZE = 0.4
 
 
 def get_padded_array(max_size_1st, max_size_2nd, parent_array):
@@ -71,7 +72,7 @@ def run_keras(lights_data_combined, learn_values):
     # print(lights_data_combined[:4])
     # Split the dataset into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
-        lights_data_combined, lights_data_combined_classifications, test_size=0.4, random_state=0
+        lights_data_combined, lights_data_combined_classifications, test_size=TEST_SIZE, random_state=0
     )
 
     print("Defining model architecture")
@@ -116,9 +117,8 @@ def _get_training_dataset(input_folder):
     training_data_classifications = []
 
     for directory in os.listdir(input_folder):
-        print(directory)
         # Ignore e.g. .DS_Store
-        if not directory.startswith(".") and directory not in temp_ignore_list:
+        if not directory.startswith(".") and directory not in TEMP_IGNORE_LIST:
             files_path = f"{input_folder}/{directory}"
             print("files_path HIGH", files_path)
             filter = "HIGH.tif"

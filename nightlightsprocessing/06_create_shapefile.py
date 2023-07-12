@@ -4,8 +4,13 @@ import argparse
 import sys
 import geopandas as gpd
 from shapely.geometry import Point
+from .get_ESMI_location_information import get_ESMI_location_information
+import requests
 
 DESC = "This script creates a shapefile based on the name, logitude and latitude defined."
+
+# TODO: use centralised column names
+LOCATION_NAME_COLUMN = "Location name"
 
 ################################################################################
 
@@ -131,13 +136,49 @@ latitude = 27.5655893
 # latitude = 26.8976618
 
 
-def create_shapefile(destination):
-    point = Point(longitude, latitude)
-    data = gpd.GeoDataFrame(geometry=[point])
-    data.crs = "EPSG:4326"  # For example, using WGS84 CRS
+# GET https://maps.googleapis.com/maps/api/geocode/json?address=<YOUR_LOCATION>&key=<YOUR_API_KEY>
 
-    output_file = f"{destination}/{name}.shp"
-    data.to_file(output_file)
+
+def create_shapefile(destination, google_maps_geocoding_api_key, ground_truth_input_folder, state, location):
+    # Pass in state and location
+    # Get location info from ESMI location information
+    # Use geocoding api to create a dataframe with locations + coordinates
+    # Write it to CSV
+    # Check for locations in CSV before trying to get them again
+
+    location_names = get_ESMI_location_information(ground_truth_input_folder, state, location)[LOCATION_NAME_COLUMN]
+    print("Finding location names...")
+    for location_name in location_names:
+        location_name = location_name.replace("[Offline]", "")
+        location_name = location_name.replace(location, "")
+        location_name = location_name.replace("-", "")
+        location_name = f"{location_name}, {state}"
+
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={location_name}&key={google_maps_geocoding_api_key}"
+        response = requests.get(url)
+        data = response.json()
+        print(data)
+
+        # Extract the coordinates from the API response
+        if data["status"] == "OK":
+            results = data["results"]
+            if results:
+                first_result = results[0]
+                result_geometry = first_result["geometry"]
+                result_location = result_geometry["location"]
+                latitude = result_location["lat"]
+                longitude = result_location["lng"]
+                print(f"Latitude: {latitude}")
+                print(f"Longitude: {longitude}")
+        else:
+            print("Geocoding failed. Error:", data["status"])
+
+    # point = Point(longitude, latitude)
+    # data = gpd.GeoDataFrame(geometry=[point])
+    # data.crs = "EPSG:4326"  # For example, using WGS84 CRS
+
+    # output_file = f"{destination}/{name}.shp"
+    # data.to_file(output_file)
 
 
 ################################################################################
@@ -152,10 +193,35 @@ def _main(argv):
         help="Store directory structure in DIR",
         required=True,
     )
+    parser.add_argument(
+        "-g",
+        "--google-maps-geocoding-api-key",
+        dest="google_maps_geocoding_api_key",
+        help="Google Maps API key",
+        required=True,
+    )
+    parser.add_argument(
+        "-i",
+        "--ground-truth-input-folder",
+        dest="ground_truth_input_folder",
+        help="Ground truth input data directory",
+        required=True,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--state",
+        dest="state",
+        help="State in India",
+        required=True,
+    )
+    parser.add_argument("-l", "--location", dest="location", help="Location within State defined", required=True)
 
     args = parser.parse_args(argv[1:])
 
-    create_shapefile(args.destination)
+    create_shapefile(
+        args.destination, args.google_maps_geocoding_api_key, args.ground_truth_input_folder, args.state, args.location
+    )
 
 
 if __name__ == "__main__":

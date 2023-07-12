@@ -13,7 +13,7 @@ O6_LOCATION_SHAPEFILES = "./data/06-location-shapefiles"
 O7_CROPPED_IMAGES = "./data/07-cropped-images"
 
 STATE = "Uttar Pradesh"
-LOCATION = "Bahraich"
+LOCATION = "Lucknow"
 TILE_DESCRIPTOR = "h26v06" # A MODIS tile descriptor
 GRID_RELIABILITY = "LOW" # Either LOW or HIGH
 BUFFER_DISTANCE_MILES = "1"
@@ -46,19 +46,19 @@ BUFFER_DISTANCE_MILES = "1"
 
 # 06 create .shp files for your areas
 06-create-shapefile:
-		python3 -m nightlightsprocessing.06_create_shapefile --destination ${O6_LOCATION_SHAPEFILES}
+		python3 -m nightlightsprocessing.06_create_shapefile --destination ${O6_LOCATION_SHAPEFILES} --google-maps-geocoding-api-key ${GOOGLE_MAPS_GEOCODING_API_KEY} --ground-truth-input-folder ${OO_GROUND_TRUTH_PATH} --state ${STATE} --location ${LOCATION}
 
 # 07 crop processed images based on ground truth data
 07-crop-images:
 		python3 -m nightlightsprocessing.07_crop_images --reliability-dataset-input-folder ${O3_RELIABILITY_DATASETS_PATH} --vnp46a2-tif-input-folder ${O5_PROCESSED_VNP46A2_IMAGES} --shapefile-input-folder ${O6_LOCATION_SHAPEFILES} --destination ${O7_CROPPED_IMAGES}/${LOCATION}-buffer-${BUFFER_DISTANCE_MILES}-miles --buffer ${BUFFER_DISTANCE_MILES} --state ${STATE} --location ${LOCATION} --grid-reliability ${GRID_RELIABILITY}
 
+08-run-model:
+		python3 -m nightlightsprocessing.08_run_model
 
 # TODO: should turn all this to one entry point with script arguements (assuming it stays as one package)
 # https://stackoverflow.com/questions/57744466/how-to-properly-structure-internal-scripts-in-a-python-project
 
-select-model:
-		python3 -m nightlightsprocessing.select_model
-
+# Ancillary
 average-images:
 		python3 -m nightlightsprocessing.average_images
 ################################################################################
