@@ -41,7 +41,7 @@ LOCATIONS_TO_REMOVE = [
     "Sikandarabad - Sitapur",
     "Tedwadih- Sitapur",
 ]
-ALLOWED_NAN_PERCENTAGE = 80
+ALLOWED_NAN_PERCENTAGE = 40
 OVER_PERCENTAGE_OF_VALUES_NAN_ERROR = f"Over {ALLOWED_NAN_PERCENTAGE}% of image was NaN, so discarding image"
 
 ################################################################################

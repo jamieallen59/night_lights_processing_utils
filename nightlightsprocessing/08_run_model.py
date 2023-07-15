@@ -9,6 +9,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 TEMP_IGNORE_LIST = ["Lucknow-buffer-1-miles", "Sitapur-buffer-1-miles"]
+# TEMP_IGNORE_LIST = ["Lucknow-buffer-1-miles"]
+
 TEST_SIZE = 0.4
 
 
@@ -79,14 +81,32 @@ def run_keras(lights_data_combined, learn_values):
     # Define the CNN model architecture
     model = keras.Sequential(
         [
-            layers.Reshape(target_shape=(6, 7, 1), input_shape=(6, 7)),  # Reshape for CNN input
-            layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+            # layers.Reshape(target_shape=(6, 7, 1), input_shape=(6, 7)),  # Reshape for CNN input
+            # layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+            # layers.MaxPooling2D(pool_size=(2, 2)),
+            # layers.Flatten(),
+            # layers.Dense(64, activation="relu"),
+            # layers.Dense(2, activation="softmax"),  # Two classes: HIGH and LOW
+            # --- More complex architecture with 2 convolutional layer ---
+            layers.Reshape(target_shape=(6, 7, 1), input_shape=(6, 7)),
+            # Reshapes the input data to a specific shape (6x7x1).
+            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+            # Performs convolutional operations with 64 filters and 3x3 kernel size, applying the ReLU activation function.
             layers.MaxPooling2D(pool_size=(2, 2)),
+            # Performs max pooling by reducing the spatial dimensions of the data using a 2x2 window.
+            layers.Conv2D(128, kernel_size=(2, 2), activation="relu"),
+            # Performs additional convolutional operations with 128 filters and 2x2 kernel size, applying the ReLU activation function.
             layers.Flatten(),
-            layers.Dense(64, activation="relu"),
-            layers.Dense(2, activation="softmax"),  # Two classes: HIGH and LOW
+            # Flattens the multidimensional data into a 1-dimensional array.
+            layers.Dense(128, activation="relu"),
+            # Connects all the neurons in the previous layer with 128 neurons, using the ReLU activation function.
+            layers.Dropout(0.5),
+            # Applies dropout regularization, randomly setting 50% of the input units to 0 during training.
+            layers.Dense(2, activation="softmax"),
+            # Creates the output layer with 2 neurons, representing the classes, and applies the softmax activation function to obtain class probabilities.
         ]
     )
+    print("Model weights", len(model.weights))
 
     print("Compiling model...")
     # Compile the model

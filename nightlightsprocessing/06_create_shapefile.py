@@ -2,10 +2,13 @@
 
 import argparse
 import sys
+import os
+import csv
 import geopandas as gpd
 from shapely.geometry import Point
 from .get_ESMI_location_information import get_ESMI_location_information
 import requests
+from . import helpers
 
 DESC = "This script creates a shapefile based on the name, logitude and latitude defined."
 
@@ -13,36 +16,6 @@ DESC = "This script creates a shapefile based on the name, logitude and latitude
 LOCATION_NAME_COLUMN = "Location name"
 
 ################################################################################
-
-# --- Bahraich ---
-# name = "Bahadurpur-Bahraich"
-# longitude = 81.5933001
-# latitude = 27.546632
-# name = "Bardaha-Bahraich"
-# longitude = 81.3921704
-# latitude = 27.8080485
-# name = "Huzurpur-Bahraich"
-# longitude = 81.6586352
-# latitude = 27.3481097
-# name = "Jagatapur-Bahraich"
-# longitude = 81.5969203
-# latitude = 27.5452547
-# name = "Kanjaya-Bahraich"
-# longitude = 81.6582102
-# latitude = 27.2606896
-# name = "Kurmaura-Bahraich"
-# longitude = 81.5929152
-# latitude = 27.1746395
-# name = "Mihinpurwa-Bahraich"
-# longitude = 81.2478366
-# latitude = 28.0676455
-# name = "Puraini-Bahraich"
-# longitude = 81.5782502
-# latitude = 27.2847546
-
-# Couldn't find the below Bahraich locations on Google Maps
-# name = "Samariya-Bahraich [Offline]" # can't find on map
-# name = "Mahasi-Bahraich" # can't find on map
 
 
 # --- Sitapur ---
@@ -91,9 +64,9 @@ LOCATION_NAME_COLUMN = "Location name"
 # name = "Thangaon-Sitapur"
 # longitude = 81.2267153
 # latitude = 27.4566985
-name = "Vijay Laxmi Nagar Sitapur"
-longitude = 80.6698714
-latitude = 27.5655893
+# name = "Vijay Laxmi Nagar Sitapur"
+# longitude = 80.6698714
+# latitude = 27.5655893
 
 # Couldn't find the below Sitapur locations on Google Maps
 # name = "Bhadupur Sidhauli"
@@ -139,46 +112,96 @@ latitude = 27.5655893
 # GET https://maps.googleapis.com/maps/api/geocode/json?address=<YOUR_LOCATION>&key=<YOUR_API_KEY>
 
 
+def get_location_coordinates_already_exist(csv_destination, location_name):
+    location_row = None
+    file_exists = os.path.exists(csv_destination)
+    print(f"Location '{location_name}' already exists: ", file_exists)
+    if file_exists:
+        with open(csv_destination, "r", newline="") as file:
+            data = list(csv.reader(file))
+
+            for row in data[1:]:  # Skip header row
+                if row[0] == location_name:
+                    location_row = row
+
+    return location_row
+
+
+def get_location_coordinates_from_api(location_name, location, state, google_maps_geocoding_api_key):
+    print("Getting location from API")
+    location_name_edit = location_name.replace("[Offline]", "")
+    location_name_edit = location_name_edit.replace(location, "")
+    location_name_edit = location_name_edit.replace("-", "")
+    search_location_name = f"{location_name_edit}, {location}, {state}"
+
+    url = f"https://maps.googleapis.com/maps/api/geocode/json?address={search_location_name}&key={google_maps_geocoding_api_key}"
+    response = requests.get(url)
+    data = response.json()
+
+    # Extract the coordinates from the API response
+    if data["status"] == "OK":
+        results = data["results"]
+        if results:
+            first_result = results[0]
+            result_geometry = first_result["geometry"]
+            result_location = result_geometry["location"]
+            latitude = result_location["lat"]
+            longitude = result_location["lng"]
+            print(f"Latitude: {latitude}")
+            print(f"Longitude: {longitude}")
+            return [location_name, longitude, latitude]
+    else:
+        print("Geocoding failed. Error:", data["status"])
+
+
+def write_shapefiles(destination, location_coordinate_data):
+    for location_coordinate_row in location_coordinate_data:
+        print("location_coordinate_row", location_coordinate_row)
+        new_location_name = location_coordinate_row[0]
+        new_logitude = location_coordinate_row[1]
+        new_latitude = location_coordinate_row[2]
+
+        point = Point(new_logitude, new_latitude)
+        data = gpd.GeoDataFrame(geometry=[point])
+        data.crs = "EPSG:4326"  # For example, using WGS84 CRS
+
+        output_file = f"{destination}/{new_location_name}.shp"
+        data.to_file(output_file)
+
+
 def create_shapefile(destination, google_maps_geocoding_api_key, ground_truth_input_folder, state, location):
     # Pass in state and location
     # Get location info from ESMI location information
     # Use geocoding api to create a dataframe with locations + coordinates
     # Write it to CSV
     # Check for locations in CSV before trying to get them again
+    header_row = ["Location name", "longitude", "latitude"]
+    location_coordinate_data = []
+    csv_destination = f"{destination}/{location}_coordinate_data.csv"
 
     location_names = get_ESMI_location_information(ground_truth_input_folder, state, location)[LOCATION_NAME_COLUMN]
     print("Finding location names...")
     for location_name in location_names:
-        location_name = location_name.replace("[Offline]", "")
-        location_name = location_name.replace(location, "")
-        location_name = location_name.replace("-", "")
-        location_name = f"{location_name}, {state}"
+        # Check if exists alreadu in csv
+        location_row = get_location_coordinates_already_exist(csv_destination, location_name)
+        location_row_already_exists = location_row is not None
 
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={location_name}&key={google_maps_geocoding_api_key}"
-        response = requests.get(url)
-        data = response.json()
-        print(data)
-
-        # Extract the coordinates from the API response
-        if data["status"] == "OK":
-            results = data["results"]
-            if results:
-                first_result = results[0]
-                result_geometry = first_result["geometry"]
-                result_location = result_geometry["location"]
-                latitude = result_location["lat"]
-                longitude = result_location["lng"]
-                print(f"Latitude: {latitude}")
-                print(f"Longitude: {longitude}")
+        if location_row_already_exists:
+            location_coordinate_data.append(location_row)
         else:
-            print("Geocoding failed. Error:", data["status"])
+            location_coordinates = get_location_coordinates_from_api(
+                location_name, location, state, google_maps_geocoding_api_key
+            )
+            location_coordinate_data.append(location_coordinates)
 
-    # point = Point(longitude, latitude)
-    # data = gpd.GeoDataFrame(geometry=[point])
-    # data.crs = "EPSG:4326"  # For example, using WGS84 CRS
+    # Write to csv to avoid needing API calls every time these are generated
+    data = [header_row, *location_coordinate_data]
+    helpers.write_to_csv(data, csv_destination)
 
-    # output_file = f"{destination}/{name}.shp"
-    # data.to_file(output_file)
+    print(f"The location coordinate csv has been written to {csv_destination}.")
+    print(f"The data has been written to {destination}.")
+
+    write_shapefiles(destination, location_coordinate_data)
 
 
 ################################################################################
@@ -229,3 +252,45 @@ if __name__ == "__main__":
         sys.exit(_main(sys.argv))
     except KeyboardInterrupt:
         sys.exit(-1)
+
+# AFTER API
+# location_coordinate_row ['Anand Nagar Sitapur', 80.6789519, 27.5680156]
+# location_coordinate_row ['Biswan-Sitapur', 80.9964806, 27.4937578]
+# location_coordinate_row ['Devtapur-Sitapur[Offline]', 81.0947808, 27.5656198]
+# location_coordinate_row ['Ichauli- Sitapur', 80.14425399999999, 25.5707042]
+# location_coordinate_row ['Jhauwa Khurd- Sitapur', 81.07684549999999, 27.5368173]
+# location_coordinate_row ['Jyotishah Alampur- Sitapur [Offline]', 80.8599193, 27.3727844]
+# location_coordinate_row ['Kamhira Kathura - Sitapur', 81.1719936, 27.6636778]
+# location_coordinate_row ['Kankari- Sitapur', 81.1830178, 27.6411061]
+# location_coordinate_row ['Khindaura- Sitapur', 80.6789519, 27.5680156]
+# location_coordinate_row ['Manwan- Sitapur', 80.6789519, 27.5680156]
+# location_coordinate_row ['Mukimpur-Sitapur [Offline]', 80.8571521, 27.2531845]
+# location_coordinate_row ['Muradpur -Sitapur', 80.6396287, 27.6039423]
+# location_coordinate_row ['Pahadpur-Sitapur', 80.59244489999999, 27.7227898]
+# location_coordinate_row ['Sahdipur-Sitapur', 80.7533126, 27.6668271]
+# location_coordinate_row ['Sikandarabad - Sitapur', 77.6954889, 28.4511246]
+# location_coordinate_row ['Tarinpur Sitapur', 80.6665045, 27.5745025]
+# location_coordinate_row ['Tedwadih- Sitapur', 80.6789519, 27.5680156]
+# location_coordinate_row ['Thangaon-Sitapur', 81.2436227, 27.4586356]
+# location_coordinate_row ['Vijay Laxmi Nagar Sitapur', 80.67933939999999, 27.5660019]
+
+# AFTER csv
+# location_coordinate_row {'Location name': 'Anand Nagar Sitapur', 'longitude': '80.6789519', 'latitude': '27.5680156'}
+# location_coordinate_row {'Location name': 'Biswan-Sitapur', 'longitude': '80.9964806', 'latitude': '27.4937578'}
+# location_coordinate_row {'Location name': 'Devtapur-Sitapur[Offline]', 'longitude': '81.0947808', 'latitude': '27.5656198'}
+# location_coordinate_row {'Location name': 'Ichauli- Sitapur', 'longitude': '80.14425399999999', 'latitude': '25.5707042'}
+# location_coordinate_row {'Location name': 'Jhauwa Khurd- Sitapur', 'longitude': '81.07684549999999', 'latitude': '27.5368173'}
+# location_coordinate_row {'Location name': 'Jyotishah Alampur- Sitapur [Offline]', 'longitude': '80.8599193', 'latitude': '27.3727844'}
+# location_coordinate_row {'Location name': 'Kamhira Kathura - Sitapur', 'longitude': '81.1719936', 'latitude': '27.6636778'}
+# location_coordinate_row {'Location name': 'Kankari- Sitapur', 'longitude': '81.1830178', 'latitude': '27.6411061'}
+# location_coordinate_row {'Location name': 'Khindaura- Sitapur', 'longitude': '80.6789519', 'latitude': '27.5680156'}
+# location_coordinate_row {'Location name': 'Manwan- Sitapur', 'longitude': '80.6789519', 'latitude': '27.5680156'}
+# location_coordinate_row {'Location name': 'Mukimpur-Sitapur [Offline]', 'longitude': '80.8571521', 'latitude': '27.2531845'}
+# location_coordinate_row {'Location name': 'Muradpur -Sitapur', 'longitude': '80.6396287', 'latitude': '27.6039423'}
+# location_coordinate_row {'Location name': 'Pahadpur-Sitapur', 'longitude': '80.59244489999999', 'latitude': '27.7227898'}
+# location_coordinate_row {'Location name': 'Sahdipur-Sitapur', 'longitude': '80.7533126', 'latitude': '27.6668271'}
+# location_coordinate_row {'Location name': 'Sikandarabad - Sitapur', 'longitude': '77.6954889', 'latitude': '28.4511246'}
+# location_coordinate_row {'Location name': 'Tarinpur Sitapur', 'longitude': '80.6665045', 'latitude': '27.5745025'}
+# location_coordinate_row {'Location name': 'Tedwadih- Sitapur', 'longitude': '80.6789519', 'latitude': '27.5680156'}
+# location_coordinate_row {'Location name': 'Thangaon-Sitapur', 'longitude': '81.2436227', 'latitude': '27.4586356'}
+# location_coordinate_row {'Location name': 'Vijay Laxmi Nagar Sitapur', 'longitude': '80.67933939999999', 'latitude': '27.5660019'}

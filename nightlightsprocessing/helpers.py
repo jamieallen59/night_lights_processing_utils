@@ -21,6 +21,13 @@ USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r"
 ################################################################################
 
 
+def write_to_csv(data, filename):
+    # Write to a .csv file
+    with open(filename, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
+
+
 def filterFilesThatInclude(subString, filenames):
     filtered = []
 

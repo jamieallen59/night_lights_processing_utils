@@ -13,9 +13,9 @@ O6_LOCATION_SHAPEFILES = "./data/06-location-shapefiles"
 O7_CROPPED_IMAGES = "./data/07-cropped-images"
 
 STATE = "Uttar Pradesh"
-LOCATION = "Lucknow"
+LOCATION = "Sitapur"
 TILE_DESCRIPTOR = "h26v06" # A MODIS tile descriptor
-GRID_RELIABILITY = "LOW" # Either LOW or HIGH
+GRID_RELIABILITY = "HIGH" # Either LOW or HIGH
 BUFFER_DISTANCE_MILES = "1"
 
 

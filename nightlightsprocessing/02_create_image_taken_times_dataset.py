@@ -9,7 +9,6 @@ import os
 from osgeo import gdal
 import rasterio as rio
 import re
-import csv
 import sys
 from . import helpers
 from . import constants
@@ -120,13 +119,6 @@ def parse_date(date_str):
         print(f"Date {date_str} is not in format {format}")
 
 
-def _write_to(data, filename):
-    # Write to a .csv file
-    with open(filename, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerows(data)
-
-
 def create_image_taken_times_dataset(input_folder, destination):
     header_row = ["Date", "start_time", "end_time", "start_end_spread_time"]
 
@@ -134,7 +126,7 @@ def create_image_taken_times_dataset(input_folder, destination):
     sorted_data = sorted(new_data, key=lambda row: parse_date(row[0]))
 
     data = [header_row, *sorted_data]
-    _write_to(data, destination)
+    helpers.write_to_csv(data, destination)
 
     print(f"The data has been written to {destination}.")
 
