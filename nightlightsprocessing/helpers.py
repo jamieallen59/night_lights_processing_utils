@@ -45,10 +45,10 @@ def getAllFilesFromFolderWithFilename(folder, filename):
 
     selectedFiles = filterFilesThatInclude(filename, allFiles)
 
-    if not selectedFiles:
-        raise RuntimeError(
-            f"There are no files in the directory: {folder} with the text: {filename} in the filename \nINFO: All files in {folder}: {allFiles}"
-        )
+    # if not selectedFiles:
+    #     raise RuntimeError(
+    #         f"There are no files in the directory: {folder} with the text: {filename} in the filename \nINFO: All files in {folder}: {allFiles}"
+    #     )
 
     return selectedFiles
 

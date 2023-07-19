@@ -50,8 +50,6 @@ def _get_groundtruth_csvs_filtered_by(input_folder, location_names):
 # defined by the 'amount' arg.
 # Low = 19:36:07
 # High = 20:35:26
-
-
 def _get_filtered_by_zeros(dataframe, grid_reliability):
     # TODO: move to Makefile?
     low_spread_hour_value = 19

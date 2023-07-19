@@ -15,3 +15,7 @@ six==1.16.0
 tzdata==2023.3
 earthpy==0.9.4
 geopandas==0.13.2
+tensorflow==2.13.0
+keras==2.13.1
+
+
