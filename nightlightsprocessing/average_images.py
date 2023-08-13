@@ -1,9 +1,10 @@
 import numpy
 import rasterio
 import sys
+import os
+import numpy as np
 from . import helpers
 
-import matplotlib.pyplot as plt
 
 grid_reliabilities = ["LOW", "HIGH"]
 
@@ -53,13 +54,7 @@ def cosine_similarity(array1, array2):
     return dot_product / (norm1 * norm2)
 
 
-def average_images():
-    input_folder = "./data/07-cropped-images/Bahraich-buffer-1-miles"
-
-    # Initialize variables to store min and max values
-    low_minimum_value, low_maximum_value = float("inf"), float("-inf")
-    high_minimum_value, high_maximum_value = float("inf"), float("-inf")
-
+def read_tifs_to_low_high_arrays(input_folder):
     all_array = []
     low_array = []
     high_array = []
@@ -77,11 +72,28 @@ def average_images():
                 inner_array = array[0]
                 all_array.append(inner_array)
 
-            if reliability == "LOW":
-                low_array.append(inner_array)
+                if reliability == "LOW":
+                    low_array.append(inner_array)
 
-            elif reliability == "HIGH":
-                high_array.append(inner_array)
+                elif reliability == "HIGH":
+                    high_array.append(inner_array)
+
+    return all_array, high_array, low_array
+
+
+# Maybe find the next lowest value above 0 for the LIGHT ON cases?
+def spreads_of_means_and_stds():
+    # input_folder = "./data/07-cropped-images/Bahraich-buffer-1-miles"
+    input_folder = "./data/07-cropped-images/Sitapur-buffer-1-miles"
+    # input_folder = "./data/07-cropped-images/Varanasi-buffer-1-miles"
+    # input_folder = "./data/07-cropped-images/Kanpur-buffer-1-miles"
+    # input_folder = "./data/07-cropped-images/Barabanki-buffer-1-miles"
+
+    # Initialize variables to store min and max values
+    low_minimum_value, low_maximum_value = float("inf"), float("-inf")
+    high_minimum_value, high_maximum_value = float("inf"), float("-inf")
+
+    all_array, high_array, low_array = read_tifs_to_low_high_arrays(input_folder)
 
     print("len(low_array)", len(low_array))
     print("len(high_array)", len(high_array))
@@ -187,16 +199,6 @@ def average_images():
 
     # plt.show()
 
-    # print("--- OVERALL STATS ---")
-
-    # print("--- Mean ---")
-    # print("Spread between mean of min LOW and min HIGH: ", mean_spread_min, f"= {spread_status_min}")
-    # print("Spread between mean of max LOW and max HIGH: ", mean_spread_max, f"= {spread_status_max}")
-
-    # print("--- Standard Deviation ---")
-    # print("Spread between std of min LOW and min HIGH: ", std_spread_min, f"= {std_spread_status_min}")
-    # print("Spread between std of min LOW and min HIGH: ", std_spread_max, f"= {std_spread_status_max}")
-
     # --- Uncomment to allow visual plotting ----
     # # Calculate the average value per coordinate across all arrays
     # average_array = numpy.nanmean(stacked_array, axis=0)
@@ -210,6 +212,42 @@ def average_images():
     # plt.colorbar()
     # plt.title("Standard Deviation")
     # plt.show()
+
+
+def myFunc(directory):
+    if ".DS_Store" in directory:
+        return False
+    else:
+        return True
+
+
+def plot_mean_timeseries():
+    input_folder = "./data/07-cropped-images"
+    directories = os.listdir(input_folder)
+
+    directories = filter(myFunc, directories)
+
+    dates = []
+    values = []
+
+    for directory in list(directories):
+        path = f"{input_folder}/{directory}"
+        filepaths = helpers.getAllFilesFromFolderWithFilename(path, "")
+
+        for filepath in filepaths:
+            with rasterio.open(f"{path}/{filepath}") as src:
+                array = src.read()
+                array = array[0]
+                array = np.nanmean(array)
+
+            path_from_julian_date_onwards = filepath.split(f"vnp46a2-a", 1)[1]
+            julian_date = path_from_julian_date_onwards.split("-")[0]
+            date = helpers.get_datetime_from_julian_date(julian_date)
+
+            dates.append(date)
+            values.append(array)
+
+    helpers.plot_overall_mean_timeseries(dates, values)
 
 
 if __name__ == "__main__":

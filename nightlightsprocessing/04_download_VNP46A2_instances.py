@@ -10,6 +10,7 @@ import sys
 import asyncio
 import csv
 from . import helpers
+from . import constants
 
 
 # you will need to replace the following line with the location of a
@@ -110,28 +111,22 @@ def _main(argv):
         required=True,
     )
     parser.add_argument("-l", "--location", dest="location", help="Location within State defined", required=True)
-    parser.add_argument(
-        "-gr",
-        "--grid-reliability",
-        dest="grid_reliability",
-        help="A value either LOW or HIGH to represent the reliability of the grid",
-        required=True,
-    )
     parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
 
     args = parser.parse_args(argv[1:])
 
-    asyncio.run(
-        _download_tile_for_days(
-            args.destination,
-            args.token,
-            args.tile_descriptor,
-            args.state,
-            args.location,
-            args.input_folder,
-            args.grid_reliability,
+    for grid_reliability in constants.GRID_RELIABILITIES:
+        asyncio.run(
+            _download_tile_for_days(
+                args.destination,
+                args.token,
+                args.tile_descriptor,
+                args.state,
+                args.location,
+                args.input_folder,
+                grid_reliability,
+            )
         )
-    )
 
 
 if __name__ == "__main__":

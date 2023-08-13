@@ -17,5 +17,7 @@ earthpy==0.9.4
 geopandas==0.13.2
 tensorflow==2.13.0
 keras==2.13.1
-
+pydot==1.4.2
+mlxtend==0.22.0
+seaborn==0.12.2
 

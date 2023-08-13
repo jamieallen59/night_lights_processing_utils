@@ -14,9 +14,6 @@ DESC = "This script will create a dataset from the ground truth data provided, a
 # TODO: use centralised column names
 LOCATION_NAME_COLUMN = "Location name"
 DATE_COLUMN = "Date"
-# TODO: move to Makefile?
-LOW_RELIABILITY_VOLTAGE = 0
-HIGH_RELIABILITY_VOLTAGE = 170
 DEBUG = False
 
 ################################################################################
@@ -50,7 +47,7 @@ def _get_groundtruth_csvs_filtered_by(input_folder, location_names):
 # defined by the 'amount' arg.
 # Low = 19:36:07
 # High = 20:35:26
-def _get_filtered_by_zeros(dataframe, grid_reliability):
+def _get_filtered_by_voltage_values(dataframe, grid_reliability, low_reliability_voltage, high_reliability_voltage):
     # TODO: move to Makefile?
     low_spread_hour_value = 19
     low_spread_minute_value = 36
@@ -61,32 +58,34 @@ def _get_filtered_by_zeros(dataframe, grid_reliability):
     for index, row in dataframe.iterrows():
         hour = row["Hour"]
 
+        # If the hour == the low spread hour
         if hour == low_spread_hour_value:
+            # and we want LOW grid reliability
+            # return true if all values after the low_spread_minute_value
+            # are above the high_reliability_voltage
+            range_low_to_end_of_hour = range(low_spread_minute_value, 60)
+            all_values_are_above_required = all(
+                int(row[f"Min {minute}"]) >= int(high_reliability_voltage) for minute in range_low_to_end_of_hour
+            )
+            all_values_are_below_required = all(
+                int(row[f"Min {minute}"]) <= int(low_reliability_voltage) for minute in range_low_to_end_of_hour
+            )
             conditional = (
-                all(
-                    int(row[f"Min {minute}"]) >= HIGH_RELIABILITY_VOLTAGE
-                    for minute in range(low_spread_minute_value, 60)
-                )
-                if grid_reliability == "HIGH"
-                else all(
-                    int(row[f"Min {minute}"]) == LOW_RELIABILITY_VOLTAGE
-                    for minute in range(low_spread_minute_value, 60)
-                )
+                all_values_are_above_required if grid_reliability == "HIGH" else all_values_are_below_required
             )
 
             if conditional:
                 filtered_rows.append(row)
         elif hour == high_spread_hour_value:
+            range_start_of_hour_to_end = range(0, high_spread_minute_value)
+            all_values_are_above_required = all(
+                int(row[f"Min {minute}"]) >= int(high_reliability_voltage) for minute in range_start_of_hour_to_end
+            )
+            all_values_are_below_required = all(
+                int(row[f"Min {minute}"]) <= int(low_reliability_voltage) for minute in range_start_of_hour_to_end
+            )
             conditional = (
-                all(
-                    int(row[f"Min {minute}"]) >= HIGH_RELIABILITY_VOLTAGE
-                    for minute in range(0, high_spread_minute_value)
-                )
-                if grid_reliability == "HIGH"
-                else all(
-                    int(row[f"Min {minute}"]) == LOW_RELIABILITY_VOLTAGE
-                    for minute in range(0, high_spread_minute_value)
-                )
+                all_values_are_above_required if grid_reliability == "HIGH" else all_values_are_below_required
             )
 
             if conditional:
@@ -131,7 +130,9 @@ def _get_concatenated_groundtruth_sorted_by_date(input_folder, state, location):
     return result.sort_values("Date", ascending=True, kind="stable", na_position="first", ignore_index=True)
 
 
-def create_reliability_dataset(input_folder, destination, state, location, grid_reliability):
+def create_reliability_dataset(
+    input_folder, destination, state, location, grid_reliability, low_reliability_voltage, high_reliability_voltage
+):
     concatenated_groundtruth_sorted_by_date = _get_concatenated_groundtruth_sorted_by_date(
         input_folder, state, location
     )
@@ -143,7 +144,9 @@ def create_reliability_dataset(input_folder, destination, state, location, grid_
         print("Writing non filtered data to to allow inspection at: ", write_full_location_results_file_path)
         result_filtered_by_certain_hours.to_csv(write_full_location_results_file_path)
 
-    result_filtered_by_zeros = _get_filtered_by_zeros(result_filtered_by_certain_hours, grid_reliability)
+    result_filtered_by_zeros = _get_filtered_by_voltage_values(
+        result_filtered_by_certain_hours, grid_reliability, low_reliability_voltage, high_reliability_voltage
+    )
 
     if DEBUG:
         write_full_location_results_file_path = f"{destination}/ESMI minute-wise voltage data - {state} - {location} - filtered debug 2 {grid_reliability}.csv"
@@ -201,18 +204,34 @@ def _main(argv):
         help="Store directory structure in DIR",
         required=True,
     )
+    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
     parser.add_argument(
-        "-gr",
-        "--grid-reliability",
-        dest="grid_reliability",
-        help="A value either LOW or HIGH to represent the reliability of the grid",
+        "-lr",
+        "--low-reliability-voltage",
+        dest="low_reliability_voltage",
+        help="A voltage value for which low data instances must be below",
         required=True,
     )
-    parser.add_argument("-i", "--input-folder", dest="input_folder", help="Input data directory", required=True)
+    parser.add_argument(
+        "-hr",
+        "--high-reliability-voltage",
+        dest="high_reliability_voltage",
+        help="A voltage value for which low data instances must be below",
+        required=True,
+    )
 
     args = parser.parse_args(argv[1:])
 
-    create_reliability_dataset(args.input_folder, args.destination, args.state, args.location, args.grid_reliability)
+    for grid_reliability in constants.GRID_RELIABILITIES:
+        create_reliability_dataset(
+            args.input_folder,
+            args.destination,
+            args.state,
+            args.location,
+            grid_reliability,
+            args.low_reliability_voltage,
+            args.high_reliability_voltage,
+        )
 
 
 if __name__ == "__main__":
