@@ -7,7 +7,7 @@ include .env
 # 05-process-VNP46A2-images
 # 06-create-shapefiles
 # 07-crop-images
-
+# 08-run-model
 
 # // Then ready to run model
 
