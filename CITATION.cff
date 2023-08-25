@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Allen"
+    given-names: "Jamie"
+title: "Nightlights processing utils"
+version: 0.1
+doi: 10.5281/zenodo.8283041
+date-released: 2023-08-25
+url: "https://github.com/jamieallen59/night_lights_processing_utils"

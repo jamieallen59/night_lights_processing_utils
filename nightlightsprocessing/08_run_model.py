@@ -1,14 +1,18 @@
 import numpy as np
-import rasterio
+
+# import rasterio
 
 import sys
-import os
+
+# import os
 from sklearn.model_selection import train_test_split
 from . import helpers
-from sklearn.preprocessing import LabelEncoder
+
+# from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import fbeta_score
 from matplotlib import pyplot
-from mlxtend.preprocessing import minmax_scaling
+
+# from mlxtend.preprocessing import minmax_scaling
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import accuracy_score, log_loss
 from sklearn.metrics import confusion_matrix, roc_curve, roc_auc_score, auc
@@ -70,94 +74,94 @@ def summarize_diagnostics(history):
 
 
 # --- Get training/test datasets ---
-def _get_training_dataset(input_folder, training_dataset_foldernames):
-    low = []
-    high = []
+# def _get_training_dataset(input_folder, training_dataset_foldernames):
+#     low = []
+#     high = []
 
-    training_data = []
-    training_data_classifications = []
+#     training_data = []
+#     training_data_classifications = []
 
-    for directory in training_dataset_foldernames:
-        sub_directories_path = f"{input_folder}/{directory}"
-        location_sub_directories = os.listdir(sub_directories_path)
+#     for directory in training_dataset_foldernames:
+#         sub_directories_path = f"{input_folder}/{directory}"
+#         location_sub_directories = os.listdir(sub_directories_path)
 
-        for location_sub_directory in location_sub_directories:
-            if not location_sub_directory.startswith("."):
-                files_path = f"{input_folder}/{directory}/{location_sub_directory}"
-                # print("files_path:", files_path)
+#         for location_sub_directory in location_sub_directories:
+#             if not location_sub_directory.startswith("."):
+#                 files_path = f"{input_folder}/{directory}/{location_sub_directory}"
+#                 # print("files_path:", files_path)
 
-                filepaths = helpers.getAllFilesFromFolderWithFilename(files_path, "")
+#                 filepaths = helpers.getAllFilesFromFolderWithFilename(files_path, "")
 
-                temp = []
+#                 temp = []
 
-                for filename in filepaths:
-                    filepath = f"{files_path}/{filename}"
+#                 for filename in filepaths:
+#                     filepath = f"{files_path}/{filename}"
 
-                    with rasterio.open(filepath) as src:
-                        array = src.read()
-                        array = array[0]
+#                     with rasterio.open(filepath) as src:
+#                         array = src.read()
+#                         array = array[0]
 
-                        image_mean = np.nanmean(array)
+#                         image_mean = np.nanmean(array)
 
-                        # array[np.isnan(array)] = image_mean  # Replace NaN with image mean
-                        array[np.isnan(array)] = 0  # OR replace Nan with zero?
+#                         # array[np.isnan(array)] = image_mean  # Replace NaN with image mean
+#                         array[np.isnan(array)] = 0  # OR replace Nan with zero?
 
-                        if "LOW" in filepath:
-                            item = {"classification": "LOW", "original": array, "mean": image_mean}
-                        else:
-                            item = {"classification": "HIGH", "original": array, "mean": image_mean}
+#                         if "LOW" in filepath:
+#                             item = {"classification": "LOW", "original": array, "mean": image_mean}
+#                         else:
+#                             item = {"classification": "HIGH", "original": array, "mean": image_mean}
 
-                        temp.append(item)
+#                         temp.append(item)
 
-                # # Normalise and scale data per location
-                all_temp_items = [item["original"] for item in temp]
-                all_temp_items = np.array(all_temp_items)
-                # print("all_temp_items", all_temp_items[:3])
+#                 # # Normalise and scale data per location
+#                 all_temp_items = [item["original"] for item in temp]
+#                 all_temp_items = np.array(all_temp_items)
+#                 # print("all_temp_items", all_temp_items[:3])
 
-                # overall_mean = np.nanmean(all_temp_items)
-                # overall_std_deviation = np.nanstd(all_temp_items)
-                # print("Overall Mean:", overall_mean)
-                # print("Overall Standard Deviation:", overall_std_deviation)
+#                 # overall_mean = np.nanmean(all_temp_items)
+#                 # overall_std_deviation = np.nanstd(all_temp_items)
+#                 # print("Overall Mean:", overall_mean)
+#                 # print("Overall Standard Deviation:", overall_std_deviation)
 
-                # Add all scaled items and scaled means to temp array
-                column_indices = np.arange(all_temp_items.shape[1])
-                scaled = minmax_scaling(all_temp_items, columns=column_indices)
+#                 # Add all scaled items and scaled means to temp array
+#                 column_indices = np.arange(all_temp_items.shape[1])
+#                 scaled = minmax_scaling(all_temp_items, columns=column_indices)
 
-                # Add scaled array and means to dataset
-                for i in range(len(temp)):
-                    scaled_array = scaled[i]
-                    scaled_mean = np.nanmean(scaled_array)
-                    temp[i]["scaled"] = scaled_array
-                    temp[i]["scaled_mean"] = scaled_mean
+#                 # Add scaled array and means to dataset
+#                 for i in range(len(temp)):
+#                     scaled_array = scaled[i]
+#                     scaled_mean = np.nanmean(scaled_array)
+#                     temp[i]["scaled"] = scaled_array
+#                     temp[i]["scaled_mean"] = scaled_mean
 
-                # # process arrays with mean and std
-                for item in temp:
-                    data = item["scaled"]
+#                 # # process arrays with mean and std
+#                 for item in temp:
+#                     data = item["scaled"]
 
-                    if item["classification"] == "LOW":
-                        training_data.append(data)
-                        low.append(data)
-                        training_data_classifications.append("LOW")
-                    else:
-                        training_data.append(data)
-                        high.append(data)
-                        training_data_classifications.append("HIGH")
+#                     if item["classification"] == "LOW":
+#                         training_data.append(data)
+#                         low.append(data)
+#                         training_data_classifications.append("LOW")
+#                     else:
+#                         training_data.append(data)
+#                         high.append(data)
+#                         training_data_classifications.append("HIGH")
 
-                # ------ PLOT MEANS AND SCALED. GOOD FOR THESIS. --------
-                # fig, ax = pyplot.subplots(1, 2, figsize=(15, 3))
-                # all_means = [item["mean"] for item in temp]
-                # sns.histplot(all_means, ax=ax[0], kde=True, legend=False)
-                # ax[0].set_title("All means (original data)")
-                # all_scaled_means = [item["scaled_mean"] for item in temp]
-                # sns.histplot(all_scaled_means, ax=ax[1], kde=True, legend=False)
-                # ax[1].set_title("All scaled means")
-                # pyplot.show()
+#                 # ------ PLOT MEANS AND SCALED. GOOD FOR THESIS. --------
+#                 # fig, ax = pyplot.subplots(1, 2, figsize=(15, 3))
+#                 # all_means = [item["mean"] for item in temp]
+#                 # sns.histplot(all_means, ax=ax[0], kde=True, legend=False)
+#                 # ax[0].set_title("All means (original data)")
+#                 # all_scaled_means = [item["scaled_mean"] for item in temp]
+#                 # sns.histplot(all_scaled_means, ax=ax[1], kde=True, legend=False)
+#                 # ax[1].set_title("All scaled means")
+#                 # pyplot.show()
 
-    print("Training set total size", len(training_data))
-    print("HIGH items", training_data_classifications.count("HIGH"))
-    print("LOW items", training_data_classifications.count("LOW"))
+#     print("Training set total size", len(training_data))
+#     print("HIGH items", training_data_classifications.count("HIGH"))
+#     print("LOW items", training_data_classifications.count("LOW"))
 
-    return training_data, training_data_classifications
+#     return training_data, training_data_classifications
 
 
 # run the test harness for evaluating a model
@@ -235,7 +239,7 @@ def main():
     training_data_input_folder = "./data/07-cropped-images"
 
     # Get training dataset
-    X_train, y_train = _get_training_dataset(training_data_input_folder, TRAINING_DATASET_FOLDERNAMES)
+    X_train, y_train, overall = helpers.get_training_dataset(training_data_input_folder, TRAINING_DATASET_FOLDERNAMES)
 
     # Reshape data and pad with nan's
     max_size_1st = max(arr.shape[0] for arr in X_train)
@@ -251,26 +255,6 @@ def main():
     # Create array of 0's and 1's for my dataset
     encoded_Y = [CLASS_MAPPING[label] for label in y_train]
     encoded_Y = np.array(encoded_Y, dtype=int)
-
-    # ------- PLOT MEANS FOR WHOLE DATASET. GOOD FOR THESIS. ---------
-    # print(X_train.shape)
-    # mean_values = np.nanmean(X_train, axis=1)
-    # print(mean_values)
-    # # Create x values for the plot (assuming one mean value per row)
-    # x_values = np.arange(mean_values.shape[0])
-    # # Plot the mean values
-    # pyplot.figure(figsize=(10, 6))
-    # scatter = pyplot.scatter(x_values, mean_values, c=encoded_Y, cmap="coolwarm", marker="o")
-    # pyplot.xlabel("Sample Index")
-    # pyplot.ylabel("Mean Value")
-    # pyplot.title("Mean Values whole dataset")
-    # # Create a custom colorbar
-    # cbar = pyplot.colorbar(scatter)
-    # cbar.set_label("Class Label")
-    # cbar.set_ticks([0, 1])  # Positions for the tick labels
-    # cbar.set_ticklabels(["LOW", "HIGH"])  # Corresponding tick labels
-    # pyplot.grid(True)
-    # pyplot.show()
 
     trainX, testX, trainY, testY = train_test_split(X_train, encoded_Y, test_size=TEST_SIZE, random_state=1)
     print(trainX.shape, len(trainY), testX.shape, len(testY))

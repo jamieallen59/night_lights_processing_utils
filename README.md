@@ -1,5 +1,7 @@
 # Night Lights Processing Utils
 
+[![DOI](https://zenodo.org/badge/635807350.svg)](https://zenodo.org/badge/latestdoi/635807350)
+
 TODO: update to new folder structure
 TODO: add validation into scripts
 

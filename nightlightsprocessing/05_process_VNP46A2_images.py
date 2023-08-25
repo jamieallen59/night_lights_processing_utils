@@ -180,7 +180,6 @@ def process_vnp46a2(hd5_filepath, destination):
         )
         print("Masking for clouds...")
         result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval_array, QF_cloud_mask_band)
-        print("Masking for sea water...")
 
         # TODO: Do I need to do this?
         # print("Masking for sensor problems...")
@@ -197,6 +196,16 @@ def process_vnp46a2(hd5_filepath, destination):
         # Set fill value to np.nan and fill masked values
         ma.set_fill_value(result, np.nan)
         filled_data = result.filled()
+
+        # IF ANY INDIVIDUAL PLOTTING NEEDED
+        # flat_results = np.concatenate(filled_data).ravel()
+
+        # plt.plot(flat_results, marker="o")
+        # plt.xlabel("Index")
+        # plt.ylabel("Value")
+        # plt.title("Plot of Array Values")
+        # plt.grid(True)
+        # plt.show()
 
         print("Creating metadata...")
         metadata = create_metadata(

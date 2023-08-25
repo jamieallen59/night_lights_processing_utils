@@ -82,7 +82,7 @@ BUFFER_DISTANCE_MILES = "1"
 
 # Ancillary
 average-images:
-		python3 -m nightlightsprocessing.average_images average_images
+		python3 -m nightlightsprocessing.average_images plot_overall_vs_scaled
 
 clean-cropped-images:
 		python3 -m nightlightsprocessing.clean_cropped_images

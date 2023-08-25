@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 from . import constants
 from sklearn.metrics import auc, roc_curve
 from sklearn.model_selection import GridSearchCV
-from matplotlib.dates import DateFormatter, MonthLocator, YearLocator
+from mlxtend.preprocessing import minmax_scaling
+import seaborn as sns
+import numpy as np
 
 # TODO: find a way to organise better
 ################################################################################
@@ -277,35 +279,6 @@ def plot_the_loss_curve(epochs, train_loss, val_loss):
     plt.show()
 
 
-# TODO: create better units (than Value over time)
-# TODO: make different colours for different places?
-# TODO: remove some anomolies?
-def plot_overall_mean_timeseries(dates, values):
-    plt.figure(figsize=(10, 6))
-    plt.plot(dates, values, marker="o", linestyle="")
-
-    # Set Axis labels
-    plt.xlabel("Date")
-    plt.ylabel("Value")
-    plt.title("Values Over Time")
-
-    # Format the x-axis date ticks to display nicely
-    date_format = DateFormatter("%Y")
-    plt.gca().xaxis.set_major_formatter(date_format)
-    years = YearLocator(base=1, month=1, day=1)
-    plt.gca().xaxis.set_major_locator(years)
-
-    # Rotate the x-axis date labels for better readability
-    plt.xticks(rotation=45)
-
-    # Display the grid for better visualization
-    plt.grid(True)
-
-    # Show the plot
-    plt.tight_layout()  # Ensures the plot elements fit within the figure area
-    plt.show()
-
-
 # plot the first 9 images in the planet dataset
 from matplotlib import pyplot
 from matplotlib.image import imread
@@ -343,3 +316,121 @@ def hyperparameter_tuning(keras_model, X_train, y_train):
     grid_search.fit(X_train, y_train)
 
     print("Best Hyperparameters:", grid_search.best_params_)
+
+
+def get_training_dataset(input_folder, training_dataset_foldernames):
+    low = []
+    high = []
+
+    training_data = []
+    training_data_classifications = []
+
+    overall = []
+
+    for directory in training_dataset_foldernames:
+        sub_directories_path = f"{input_folder}/{directory}"
+        location_sub_directories = os.listdir(sub_directories_path)
+
+        for location_sub_directory in location_sub_directories:
+            if not location_sub_directory.startswith("."):
+                files_path = f"{input_folder}/{directory}/{location_sub_directory}"
+
+                filepaths = getAllFilesFromFolderWithFilename(files_path, "")
+
+                temp = []
+
+                for filename in filepaths:
+                    filepath = f"{files_path}/{filename}"
+
+                    with rasterio.open(filepath) as src:
+                        array = src.read()
+                        array = array[0]
+
+                        image_mean = np.nanmean(array)
+                        image_median = np.nanmedian(array)
+
+                        array[np.isnan(array)] = image_mean  # Replace NaN with image mean
+                        # array[np.isnan(array)] = 0  # OR replace Nan with zero?
+                        # Handle dates
+                        path_from_julian_date_onwards = filepath.split(f"vnp46a2-a", 1)[1]
+                        julian_date = path_from_julian_date_onwards.split("-")[0]
+                        date = get_datetime_from_julian_date(julian_date)
+
+                        classification = "LOW" if "LOW" in filepath else "HIGH"
+                        location = directory.replace("buffer-1-miles", "")
+
+                        item = {
+                            "classification": classification,
+                            "original": array,
+                            "mean": image_mean,
+                            "median": image_median,
+                            "date": date,
+                            "location": location,
+                            "sub-location": location_sub_directory,
+                        }
+
+                        temp.append(item)
+
+                # # Normalise and scale data per location
+                all_temp_items = [item["original"] for item in temp]
+                all_temp_items = np.array(all_temp_items)
+
+                # print("all_temp_items", all_temp_items[:3])
+
+                overall_mean = np.nanmean(all_temp_items)
+                overall_std_deviation = np.nanstd(all_temp_items)
+                # print("Overall Mean:", overall_mean)
+                # print("Overall Standard Deviation:", overall_std_deviation)
+
+                # Standard normalisation (- mean / SD)
+                # normalised = (all_temp_items - overall_mean) / overall_std_deviation
+
+                # MIN/MAX scaling
+                # Add all scaled items and scaled means to temp array
+                column_indices = np.arange(all_temp_items.shape[1])
+                scaled = minmax_scaling(all_temp_items, columns=column_indices)
+
+                scaled_image_mean = np.nanmean(scaled)
+                scaled[np.isnan(scaled)] = scaled_image_mean  # Replace NaN with image mean
+
+                # Add scaled array and means to dataset
+                for i in range(len(temp)):
+                    scaled_array = scaled[i]
+                    scaled_mean = np.nanmean(scaled_array)
+                    scaled_median = np.nanmedian(scaled_array)
+                    temp[i]["scaled"] = scaled_array
+                    temp[i]["scaled_mean"] = scaled_mean
+                    temp[i]["scaled_median"] = scaled_median
+
+                # # process arrays with mean and std
+                for item in temp:
+                    data = item["scaled"]
+
+                    if item["classification"] == "LOW":
+                        training_data.append(data)
+                        low.append(data)
+                        training_data_classifications.append("LOW")
+                    else:
+                        training_data.append(data)
+                        high.append(data)
+                        training_data_classifications.append("HIGH")
+
+                    overall.append(item)
+
+                # ------ PLOT MEANS AND SCALED. GOOD FOR THESIS. --------
+                # But this is per location
+                # fig, ax = plt.subplots(1, 2, figsize=(15, 3))
+                # all_means = [item["mean"] for item in temp]
+                # sns.histplot(all_means, ax=ax[0], kde=True, legend=False)
+                # ax[0].set_title("Mean values (original data)")
+                # all_scaled_means = [item["scaled_mean"] for item in temp]
+                # sns.histplot(all_scaled_means, ax=ax[1], kde=True, legend=False)
+                # ax[1].set_title("Mean values (scaled)")
+                # fig.suptitle(f"Comparison of mean values ({directory}/{location_sub_directory})")
+                # plt.show()
+
+    print("Training set total size", len(training_data))
+    print("HIGH items", training_data_classifications.count("HIGH"))
+    print("LOW items", training_data_classifications.count("LOW"))
+
+    return training_data, training_data_classifications, overall
