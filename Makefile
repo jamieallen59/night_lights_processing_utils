@@ -74,15 +74,17 @@ BUFFER_DISTANCE_MILES = "5"
 08-regression-models:
 		python3 -m nightlightsprocessing.08_regression_models
 
-09-test:
-		python3 -m nightlightsprocessing.09_test
+09-ml-model:
+		python3 -m nightlightsprocessing.09_ml_model
+
+10-plotting:
+		python3 -m nightlightsprocessing.09_plotting plot_radiance_histogram_medians
+
 
 # TODO: should turn all this to one entry point with script arguements (assuming it stays as one package)
 # https://stackoverflow.com/questions/57744466/how-to-properly-structure-internal-scripts-in-a-python-project
 
 # Ancillary
-average-images:
-		python3 -m nightlightsprocessing.average_images plot_radiance_histogram_medians
 
 clean-cropped-images:
 		python3 -m nightlightsprocessing.clean_cropped_images
