@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import pandas as pd
 import rasterio
 import csv
 import sys
@@ -10,12 +11,13 @@ import numpy as np
 import earthpy.spatial as es
 import geopandas as gpd
 from . import helpers
+from datetime import datetime
 
 # Need to run this file once for each reliability setting e.g. once for LOW and once for HIGH
 # https://earthpy.readthedocs.io/en/latest/api/earthpy.spatial.html#earthpy.spatial.crop_image
 DESC = "This script crops all images found in the given VNP46A2 file, based on data from previous script outputs"
 
-ALLOWED_NAN_PERCENTAGE = 40
+ALLOWED_NAN_PERCENTAGE = 60
 OVER_PERCENTAGE_OF_VALUES_NAN_ERROR = f"Over {ALLOWED_NAN_PERCENTAGE}% of image was NaN, so discarding image"
 GRID_RELIABILITIES = ["LOW", "HIGH"]
 
@@ -119,7 +121,6 @@ def crop_images(
                     non_nan_count = cropped_image.size - nan_count
                     nan_percentage = (np.isnan(cropped_image).sum() / cropped_image.size) * 100
 
-                    print(cropped_image)
                     print("Non-nan count", non_nan_count)
                     print("Nan count", nan_count)
                     print("Nan %", nan_percentage)
@@ -171,6 +172,7 @@ def crop_images(
                         print("ValueError", e)
                     else:
                         # Should never hit this
+                        failed_clippings += 1
                         print("WARNING: Other Value Error", e)
                 except Exception as error:
                     failed_clippings += 1
@@ -183,6 +185,110 @@ def crop_images(
     print("Successful HIGH clippings count: ", high_successful_clippings)
     print(f"LOW over >{ALLOWED_NAN_PERCENTAGE}% nan count: ", low_over_percentage_nan_images)
     print(f"HIGH over >{ALLOWED_NAN_PERCENTAGE}% nan count: ", high_over_percentage_nan_images)
+
+
+def non_filtered_sub_location_crop_images(
+    reliability_dataset_input_folder,
+    vnp46a2_tif_input_folder,
+    shapefile_input_folder,
+    buffer,
+    state,
+    location,
+    sub_location,
+    sub_location_dataset_path,
+):
+    data = pd.read_csv(sub_location_dataset_path)
+
+    # Get all unique dates from the 'Date' column
+    # data["Date"] = pd.to_datetime(data["Date"])
+    unique_dates = pd.unique(data["Date"])
+
+    for date in unique_dates:
+        date_datetime = datetime.strptime(date, "%Y-%m-%d")
+
+        date_day_integer = "{:03d}".format(date_datetime.timetuple().tm_yday)
+        year_integer = date_datetime.year
+
+        filename_filter = f"vnp46a2-a{year_integer}{date_day_integer}"
+
+        try:
+            vnp46a2_tif_file_paths = helpers.getAllFilesFromFolderWithFilename(
+                vnp46a2_tif_input_folder, filename_filter
+            )
+            vnp46a2_tif_file_path = f"{vnp46a2_tif_input_folder}/{vnp46a2_tif_file_paths[0]}"  # Should only be one .tif, so take the first one
+            location_name = sub_location
+            print("Reading from: ", vnp46a2_tif_file_path)
+            print("At:", location_name)
+            print("On:", date)
+            # Get shape file by location name
+            location_path = f"{shapefile_input_folder}/{location_name}.shp"
+            location_raw = gpd.read_file(location_path)
+            # Change the crs system to 32634 to allow us to set a buffer in metres
+            # https://epsg.io/32634
+            lucknow_unit_metres = location_raw.to_crs(crs=32634)
+
+            buffer_distance_metres = int(buffer) * 1609.34  # Convert miles to meters
+
+            # For if you don't want a circular buffer.
+            # # Note cap_style: round = 1, flat = 2, square = 3
+            # buffer = lucknow_unit_metres.buffer(buffer_distance_metres, cap_style = 3)
+
+            buffered_location = lucknow_unit_metres.buffer(buffer_distance_metres)
+
+            # Then change it back to allow the crop images
+            # https://epsg.io/4326
+            clip_boundary = buffered_location.to_crs(crs=4326)
+
+            def _get_base_filepath(filepath):
+                return f"{os.path.basename(filepath)[:-3].lower().replace('.', '-')}"
+
+            base_filepath = _get_base_filepath(vnp46a2_tif_file_path)
+            export_name = f"{_get_base_filepath(vnp46a2_tif_file_path)}clipped-{location_name}.tif"
+
+            with rasterio.open(vnp46a2_tif_file_path) as src:
+                cropped_image, cropped_metadata = es.crop_image(raster=src, geoms=clip_boundary)
+
+            cropped_image = cropped_image[0]
+
+            # Nan filtering
+            nan_count = np.isnan(cropped_image).sum()
+            non_nan_count = cropped_image.size - nan_count
+            nan_percentage = (np.isnan(cropped_image).sum() / cropped_image.size) * 100
+
+            print(cropped_image)
+            print("Non-nan count", non_nan_count)
+            print("Nan count", nan_count)
+            print("Nan %", nan_percentage)
+
+            if nan_percentage > ALLOWED_NAN_PERCENTAGE:
+                raise ValueError(OVER_PERCENTAGE_OF_VALUES_NAN_ERROR)
+
+            destination = f"./data/07-cropped-images/{location_name}-all-buffer-{buffer}-miles"
+
+            if not os.path.exists(destination):
+                os.mkdir(destination)
+
+            output_path = os.path.join(destination, export_name)
+            print("Output path: ", output_path)
+
+            helpers.export_array(
+                array=cropped_image,
+                output_path=output_path,
+                metadata=cropped_metadata,
+            )
+
+            print(
+                f"Completed clipping: Clip {os.path.basename(vnp46a2_tif_file_path)} " f"to {location_name} boundary\n"
+            )
+
+        except ValueError as e:
+            if str(e) == OVER_PERCENTAGE_OF_VALUES_NAN_ERROR:
+                print("ValueError", e)
+            else:
+                # Should never hit this
+                print("WARNING: Other Value Error", e)
+        except Exception as error:
+            print(f"Clipping failed: {error}\n")
 
 
 ################################################################################
@@ -245,6 +351,19 @@ def _main(argv):
         args.state,
         args.location,
     )
+
+    # sub_location = "Huzurpur-Bahraich"
+    # sub_location_dataset_path = "./data/03-reliability-datasets/Huzurpur-Bahraich-all.csv"
+    # non_filtered_sub_location_crop_images(
+    #     args.reliability_dataset_input_folder,
+    #     args.vnp46a2_tif_input_folder,
+    #     args.shapefile_input_folder,
+    #     args.buffer,
+    #     args.state,
+    #     args.location,
+    #     sub_location,
+    #     sub_location_dataset_path,
+    # )
 
 
 if __name__ == "__main__":

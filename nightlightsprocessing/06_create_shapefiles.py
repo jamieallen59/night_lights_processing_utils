@@ -65,21 +65,26 @@ def get_location_coordinates_from_api(location_name, location, state, google_map
             result_location = result_geometry["location"]
             latitude = result_location["lat"]
             longitude = result_location["lng"]
-            print(f"Latitude: {latitude}")
-            print(f"Longitude: {longitude}")
-            return [location_name, longitude, latitude]
+
+            # Convert all to 3dp to maximise chance of equal sized images
+            # 0.001 equates to around 100m so less than a 1 pixels (2-300m) width
+            longitude_3dp = "{:.3f}".format(float(longitude))
+            latitude_3dp = "{:.3f}".format(float(latitude))
+
+            print(f"Longitude: {longitude_3dp}")
+            print(f"Latitude: {latitude_3dp}")
+            return [location_name, longitude_3dp, latitude_3dp]
     else:
         print("Geocoding failed. Error:", data["status"])
 
 
 def write_shapefiles(destination, location_coordinate_data):
     for location_coordinate_row in location_coordinate_data:
-        print("location_coordinate_row", location_coordinate_row)
         new_location_name = location_coordinate_row[0]
-        new_logitude = location_coordinate_row[1]
+        new_longitude = location_coordinate_row[1]
         new_latitude = location_coordinate_row[2]
 
-        point = Point(new_logitude, new_latitude)
+        point = Point(new_longitude, new_latitude)
         data = gpd.GeoDataFrame(geometry=[point])
         data.crs = "EPSG:4326"  # For example, using WGS84 CRS
 
@@ -93,9 +98,9 @@ def create_shapefiles(destination, google_maps_geocoding_api_key, ground_truth_i
     csv_destination = f"{destination}/{location}_coordinate_data.csv"
 
     location_names = get_ESMI_location_information(ground_truth_input_folder, state, location)[LOCATION_NAME_COLUMN]
-    print("Finding location names...")
+    print("Finding location names...", location_names)
     for location_name in location_names:
-        # Check if exists alreadu in csv
+        # Check if exists already in csv
         location_row = get_location_coordinates_already_exist(csv_destination, location_name)
         location_row_already_exists = location_row is not None
 
@@ -109,6 +114,8 @@ def create_shapefiles(destination, google_maps_geocoding_api_key, ground_truth_i
 
     # Write to csv to avoid needing API calls every time these are generated
     data = [header_row, *location_coordinate_data]
+    print("data: ", data)
+    print("csv_destination: ", csv_destination)
     helpers.write_to_csv(data, csv_destination)
 
     print(f"The location coordinate csv has been written to {csv_destination}.")

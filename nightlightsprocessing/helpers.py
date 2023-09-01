@@ -14,6 +14,7 @@ from sklearn.model_selection import GridSearchCV
 from mlxtend.preprocessing import minmax_scaling
 import seaborn as sns
 import numpy as np
+from scipy import stats
 
 # TODO: find a way to organise better
 ################################################################################
@@ -26,6 +27,7 @@ USERAGENT = "tis/download.py_1.0--" + sys.version.replace("\n", "").replace("\r"
 ################################################################################
 
 
+# -------- HANDLING FILES -------------
 def write_to_csv(data, filename):
     # Write to a .csv file
     with open(filename, "w", newline="") as file:
@@ -116,6 +118,9 @@ def get_datetime_from_julian_date(julian_date):
     return date_only
 
 
+# -------- HANDLING FILES -------------
+
+
 # tile_descriptor: e.g. h26v06
 def _filter_only_tiles(all_files_content, tile_descriptor):
     filtered = []
@@ -150,7 +155,7 @@ def get_file_details_for_selected_tile(src, token, tile_descriptor):
     return None
 
 
-# --- Download helpers ---
+# -------- DOWNLOAD HELPERS -------------
 # This is the choice of last resort, when other attempts have failed
 def getcURL(url, headers=None, out=None):
     import subprocess
@@ -240,88 +245,60 @@ async def sync(src, destination, token, file_details):
             sys.exit(-1)
 
 
-label_index = 0
+# -------- TRAINING DATASET HELPERS -------------
+def replace_image_nan_with_means(data):
+    # Perform mean imputation per image
+    updated_images = np.copy(data)  # Create a copy of the original images to store the updated versions
+
+    # Perform mean imputation per image
+    for i in range(updated_images.shape[0]):
+        image = updated_images[i]
+        image_mean = np.nanmean(image)
+        image[np.isnan(image)] = image_mean  # Replace NaN with image mean
+        updated_images[i] = image
+
+    return updated_images
 
 
-# Model plotting functions
-# @title Define the plotting functions
-def plot_the_model(y_test, predictions):
-    fpr, tpr, _ = roc_curve(y_test, predictions)
-    roc_auc = auc(fpr, tpr)
+def get_padded_array(parent_array):
+    if not parent_array:
+        return []
 
-    plt.figure()
-    lw = 2
-    plt.plot(fpr, tpr, color="darkorange", lw=lw, label="ROC curve (area = %0.2f)" % roc_auc)
-    plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
+    max_size_1st = max(arr.shape[0] for arr in parent_array)
+    max_size_2nd = max(arr.shape[1] for arr in parent_array)
+    print(f"All data reshaped to {max_size_1st}, {max_size_2nd}")
 
-    # Set Axis labels
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title("Receiver Operating Characteristic")
-    plt.legend(loc="lower right")
-    plt.show()
+    # Pad arrays with nan values to match the maximum size
+    padded_arrays = []
 
+    for arr in parent_array:
+        pad_width = (
+            (0, max_size_1st - arr.shape[0]),
+            (0, max_size_2nd - arr.shape[1]),
+        )
+        padded_arr = np.pad(arr, pad_width, constant_values=np.nan)
+        padded_arrays.append(padded_arr)
 
-def plot_the_loss_curve(epochs, train_loss, val_loss):
-    # Plot the loss curve
-    plt.figure(figsize=(8, 6))
-    plt.plot(range(1, epochs + 1), train_loss, label="Training Loss")
-    plt.plot(range(1, epochs + 1), val_loss, label="Validation Loss")
-
-    # Set Axis labels
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.title("Training and Validation Loss Curve")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    return padded_arrays
 
 
-# plot the first 9 images in the planet dataset
-from matplotlib import pyplot
-from matplotlib.image import imread
+def filter_nans(X_train, y_train):
+    updated_X_train = []  # Create a copy of the original images to store the updated versions
+    updated_y_train = []
 
+    for i, image in enumerate(X_train):
+        nan_percentage = (np.isnan(image).sum() / image.size) * 100
+        if nan_percentage < 60:
+            image_mean = np.nanmean(image)
+            image[np.isnan(image)] = image_mean  # Replace NaN with image mean
+            # Update both train and labels data
+            updated_X_train.append(image)
+            updated_y_train.append(y_train[i])  # Append the corresponding label
 
-def show_multiple_images():
-    # define location of dataset
-    folder = "train-jpg/"
-    # plot first few images
-    for i in range(9):
-        # define subplot
-        pyplot.subplot(330 + 1 + i)
-        # define filename
-        filename = folder + "train_" + str(i) + ".jpg"
-        # load image pixels
-        image = imread(filename)
-        # plot raw pixel data
-        pyplot.imshow(image)
-    # show the figure
-    pyplot.show()
-
-
-# Hyper parameter tuning
-def hyperparameter_tuning(keras_model, X_train, y_train):
-    hyperparameters = {
-        "hidden_layer_dim": [80],
-        "loss": ["binary_crossentropy"],
-        "batch_size": [4, 8, 12, 20],
-        "epochs": [10],
-        "learning_rate": [0.001],
-        "optimizer": ["adam"],
-    }
-
-    grid_search = GridSearchCV(keras_model, hyperparameters, cv=5)
-    grid_search.fit(X_train, y_train)
-
-    print("Best Hyperparameters:", grid_search.best_params_)
+    return updated_X_train, updated_y_train
 
 
 def get_training_dataset(input_folder, training_dataset_foldernames):
-    low = []
-    high = []
-
     training_data = []
     training_data_classifications = []
 
@@ -345,12 +322,14 @@ def get_training_dataset(input_folder, training_dataset_foldernames):
                     with rasterio.open(filepath) as src:
                         array = src.read()
                         array = array[0]
+                        # Fill NaN's
+                        image_mean = np.nanmean(array)
+                        array[np.isnan(array)] = image_mean  # Replace NaN with image mean
 
+                        # Recalculate means and medians after filling nans
                         image_mean = np.nanmean(array)
                         image_median = np.nanmedian(array)
 
-                        array[np.isnan(array)] = image_mean  # Replace NaN with image mean
-                        # array[np.isnan(array)] = 0  # OR replace Nan with zero?
                         # Handle dates
                         path_from_julian_date_onwards = filepath.split(f"vnp46a2-a", 1)[1]
                         julian_date = path_from_julian_date_onwards.split("-")[0]
@@ -371,6 +350,7 @@ def get_training_dataset(input_folder, training_dataset_foldernames):
 
                         temp.append(item)
 
+                # AT THIS LEVEL IS PER-SUB LOCATION
                 # # Normalise and scale data per location
                 all_temp_items = [item["original"] for item in temp]
                 all_temp_items = np.array(all_temp_items)
@@ -383,13 +363,12 @@ def get_training_dataset(input_folder, training_dataset_foldernames):
                 # print("Overall Standard Deviation:", overall_std_deviation)
 
                 # Standard normalisation (- mean / SD)
-                # normalised = (all_temp_items - overall_mean) / overall_std_deviation
+                z_scores = (all_temp_items - overall_mean) / overall_std_deviation
 
                 # MIN/MAX scaling
                 # Add all scaled items and scaled means to temp array
                 column_indices = np.arange(all_temp_items.shape[1])
                 scaled = minmax_scaling(all_temp_items, columns=column_indices)
-
                 scaled_image_mean = np.nanmean(scaled)
                 scaled[np.isnan(scaled)] = scaled_image_mean  # Replace NaN with image mean
 
@@ -402,35 +381,30 @@ def get_training_dataset(input_folder, training_dataset_foldernames):
                     temp[i]["scaled_mean"] = scaled_mean
                     temp[i]["scaled_median"] = scaled_median
 
+                # Add Z-score to dataset
+                for i in range(len(temp)):
+                    z_score = z_scores[i]
+                    temp[i]["z_score"] = z_score
+
                 # # process arrays with mean and std
                 for item in temp:
                     data = item["scaled"]
 
                     if item["classification"] == "LOW":
                         training_data.append(data)
-                        low.append(data)
+                        # low.append(data)
                         training_data_classifications.append("LOW")
                     else:
                         training_data.append(data)
-                        high.append(data)
+                        # high.append(data)
                         training_data_classifications.append("HIGH")
 
                     overall.append(item)
 
-                # ------ PLOT MEANS AND SCALED. GOOD FOR THESIS. --------
-                # But this is per location
-                # fig, ax = plt.subplots(1, 2, figsize=(15, 3))
-                # all_means = [item["mean"] for item in temp]
-                # sns.histplot(all_means, ax=ax[0], kde=True, legend=False)
-                # ax[0].set_title("Mean values (original data)")
-                # all_scaled_means = [item["scaled_mean"] for item in temp]
-                # sns.histplot(all_scaled_means, ax=ax[1], kde=True, legend=False)
-                # ax[1].set_title("Mean values (scaled)")
-                # fig.suptitle(f"Comparison of mean values ({directory}/{location_sub_directory})")
-                # plt.show()
+    X_train, y_train = filter_nans(training_data, training_data_classifications)
 
     print("Training set total size", len(training_data))
     print("HIGH items", training_data_classifications.count("HIGH"))
     print("LOW items", training_data_classifications.count("LOW"))
 
-    return training_data, training_data_classifications, overall
+    return X_train, y_train, overall

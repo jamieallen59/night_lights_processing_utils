@@ -59,7 +59,6 @@ def _get_ESMI_location_information_filtered_by_location(location_information_dat
 # Public
 def get_ESMI_location_information(input_folder, indian_state, indian_state_location):
     location_information_dataframe = _read_ESMI_location_information_csv(input_folder)
-
     # Filtering
     filtered_df = _get_ESMI_location_information_filtered_by_state(location_information_dataframe, indian_state)
     filtered_df = _get_ESMI_location_information_filtered_by_location(

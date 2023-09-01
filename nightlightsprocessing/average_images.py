@@ -2,36 +2,29 @@ import numpy
 import rasterio
 import sys
 import numpy as np
+from sklearn.linear_model import LinearRegression
 from . import helpers
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
 from matplotlib.dates import DateFormatter, MonthLocator, YearLocator
+from sklearn.model_selection import train_test_split
+import pandas as pd
 
 
 grid_reliabilities = ["LOW", "HIGH"]
+TRAINING_DATASET_FOLDERNAMES = [
+    "Bahraich-buffer-5-miles",
+    "Barabanki-buffer-5-miles",
+    "Kanpur-buffer-5-miles",
+    "Sitapur-buffer-5-miles",
+    "Varanasi-buffer-5-miles",
+]
 
-
-# TODO: copied in 08_run_model
-def get_padded_array(parent_array):
-    if not parent_array:
-        return []
-
-    max_size_1st = max(arr.shape[0] for arr in parent_array)
-    max_size_2nd = max(arr.shape[1] for arr in parent_array)
-
-    # Pad arrays with nan values to match the maximum size
-    padded_arrays = []
-
-    for arr in parent_array:
-        pad_width = (
-            (0, max_size_1st - arr.shape[0]),
-            (0, max_size_2nd - arr.shape[1]),
-        )
-        padded_arr = numpy.pad(arr, pad_width, constant_values=numpy.nan)
-        padded_arrays.append(padded_arr)
-
-    return padded_arrays
+blue = "#1f77b4"
+red = "#d62728"
+grey = "grey"
+green = "green"
 
 
 def cosine_similarity(array1, array2):
@@ -102,9 +95,9 @@ def spreads_of_means_and_stds():
     print("len(high_array)", len(high_array))
 
     # Need to make sure all the data is the same shape
-    all_array = numpy.array(get_padded_array(all_array))
-    low_array = numpy.array(get_padded_array(low_array))
-    high_array = numpy.array(get_padded_array(high_array))
+    all_array = numpy.array(helpers.get_padded_array(all_array))
+    low_array = numpy.array(helpers.get_padded_array(low_array))
+    high_array = numpy.array(helpers.get_padded_array(high_array))
 
     # I.e. an array with the mean values for every pixel
     average_array = numpy.nanmean(all_array, axis=0)
@@ -219,66 +212,27 @@ def spreads_of_means_and_stds():
 
 # ----------------------------
 
-
-def myFunc(directory):
-    if ".DS_Store" in directory:
-        return False
-    else:
-        return True
-
-
-TRAINING_DATASET_FOLDERNAMES = [
-    "Bahraich-buffer-1-miles",
-    "Barabanki-buffer-1-miles",
-    "Kanpur-buffer-1-miles",
-    "Sitapur-buffer-1-miles",
-    "Varanasi-buffer-1-miles",
-]
-
 CLASS_MAPPING = {"HIGH": 1, "LOW": 0}
 INVERSE_CLASS_MAPPING = {1: "HIGH", 0: "LOW"}
 
 
-def replace_image_nan_with_zeros(lights_data_combined):
-    # Perform mean imputation per image
-    updated_images = np.copy(
-        lights_data_combined
-    )  # Create a copy of the original images to store the updated versions
-
-    # Perform mean imputation per image
-    for i in range(updated_images.shape[0]):
-        image = updated_images[i]
-        image[np.isnan(image)] = 0  # Replace NaN with image mean
-
-    return updated_images
-
-
-def get_padded_array(max_size_1st, max_size_2nd, parent_array):
-    # Pad arrays with nan values to match the maximum size
-    padded_arrays = []
-
-    for arr in parent_array:
-        pad_width = (
-            (0, max_size_1st - arr.shape[0]),
-            (0, max_size_2nd - arr.shape[1]),
-        )
-        padded_arr = np.pad(arr, pad_width, constant_values=np.nan)
-        padded_arrays.append(padded_arr)
-
-    return padded_arrays
-
-
 def reshape_original_data(data):
     new_data = None
-    # Reshape data and pad with nan's
-    max_size_1st = max(arr.shape[0] for arr in data)
-    max_size_2nd = max(arr.shape[1] for arr in data)
-    print(f"All data reshaped to {max_size_1st}, {max_size_2nd}")
+    # print(f"All data reshaped to {max_size_1st}, {max_size_2nd}")
     # Use same max sizes for training and test to make sure all arrays are the same size.
-    new_data = np.array(get_padded_array(max_size_1st, max_size_2nd, data))
-    new_data = replace_image_nan_with_zeros(new_data)
+    new_data = np.array(helpers.get_padded_array(data))
+    new_data = helpers.replace_image_nan_with_means(new_data)
 
     return new_data
+
+
+def get_y_encoded(ydata):
+    # Make sure HIGH is 1 and LOW is 0
+    # Create array of 0's and 1's for my dataset
+    encoded_Y = [CLASS_MAPPING[label] for label in ydata]
+    encoded_Y = np.array(encoded_Y, dtype=int)
+
+    return encoded_Y
 
 
 def get_all_data():
@@ -292,10 +246,7 @@ def get_all_data():
     original = [item["original"] for item in all_items]
     original = reshape_original_data(original)
 
-    # Make sure HIGH is 1 and LOW is 0
-    # Create array of 0's and 1's for my dataset
-    encoded_Y = [CLASS_MAPPING[label] for label in y_train]
-    encoded_Y = np.array(encoded_Y, dtype=int)
+    encoded_Y = get_y_encoded(y_train)
 
     means = [item["mean"] for item in all_items]
     medians = [item["median"] for item in all_items]
@@ -305,6 +256,8 @@ def get_all_data():
     dates = [item["date"] for item in all_items]
     locations = [item["location"] for item in all_items]
     sub_locations = [item["sub-location"] for item in all_items]
+    z_scores = [item["z_score"] for item in all_items]
+    classifications = [item["classification"] for item in all_items]
 
     return {
         "scaled": scaled,
@@ -318,6 +271,8 @@ def get_all_data():
         "sub_locations": sub_locations,
         "encoded_Y": encoded_Y,
         "all_items": all_items,
+        "z_scores": z_scores,
+        "classifications": classifications,
     }
 
 
@@ -357,6 +312,7 @@ def plot_overall_vs_scaled():
     data = get_all_data()
     scaled_medians = data["scaled_medians"]
     medians = data["medians"]
+
     # -----------------
 
     values = medians
@@ -375,19 +331,112 @@ def plot_overall_vs_scaled():
     ax[0].set_title("Values (original data)")
     sns.histplot(scaled_values, ax=ax[1], kde=True, legend=False)
     ax[1].set_title("Values (scaled)")
-    fig.suptitle(f"Overall comparison of mean values")
+    fig.suptitle(f"Overall comparison of median values")
+    plt.show()
+
+
+def get_best_midpoint(data):
+    print("data: ", data[:10])
+
+    # Sort the data array based on the values
+    sorted_data = data[np.argsort(data[:, 0], kind="stable")]
+    print("sorted_data: ", sorted_data[:10])
+
+    # Initialize variables to keep track of the best threshold and counts
+    best_threshold = None
+    max_difference = 0
+
+    # Iterate through the sorted data and find the best threshold
+    for i in range(1, len(sorted_data)):
+        # Potential threshold
+        threshold = (sorted_data[i - 1, 0] + sorted_data[i, 0]) / 2
+        print("threshold: ", threshold)
+
+        # Count true positive (HIGH) values above and true negative (LOW) values below the threshold
+        true_positive_above = np.sum(sorted_data[i:, 1] == 1)
+        print("true_positive_above: ", true_positive_above)
+        true_negative_below = np.sum(sorted_data[:i, 1] == 0)
+        print("true_negative_below: ", true_negative_below)
+
+        # Calculate the difference between true positive and true negative counts
+        difference = abs(true_positive_above - true_negative_below)
+        print("difference: ", difference)
+
+        # Update best threshold if the difference is greater
+        if difference > max_difference:
+            best_threshold = threshold
+            max_difference = difference
+
+    print("Best threshold:", best_threshold)
+    print("Max max_difference:", max_difference)
+
+
+def plot_radiance_histogram_medians():
+    data = get_all_data()
+
+    # If using whole dataset
+    medians = data["medians"]
+    encoded_Y = data["encoded_Y"]
+
+    # If filtering for one sub_location
+    # all_items = data["all_items"]
+    # sub_location_data = [item for item in all_items if item["sub-location"] == "dashehrabagh-barabanki"]
+    # classifications = [item["classification"] for item in sub_location_data]
+    # encoded_Y = get_y_encoded(classifications)
+    # medians = [item["median"] for item in sub_location_data]
+
+    # -----------------
+    values = medians
+    print("values: ", values[:10])
+    data = np.array(list(zip(values, encoded_Y)))
+
+    get_best_midpoint(data)
+    return
+
+    high_medians = [median for median, label in zip(medians, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "HIGH"]
+    low_medians = [median for median, label in zip(medians, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "LOW"]
+
+    overall_high_median = np.nanmedian(high_medians)
+    overall_low_median = np.nanmedian(low_medians)
+
+    print("overall_high_median", overall_high_median)
+    print("overall_low_median", overall_low_median)
+
+    colors = [blue, red]
+    cmap = mcolors.ListedColormap(colors)
+    x_values = np.arange(len(values))
+
+    # Create the scatter plot
+    plt.figure(figsize=(10, 6))
+    scatter = plt.scatter(x_values, values, c=encoded_Y, cmap=cmap, marker="o", alpha=0.7)
+    plt.xlabel("Sample Index")
+    plt.ylabel("Radiance")
+    plt.title("Scatter Radiance All Locations (Medians)")
+
+    # Draw horizontal lines for overall average values
+    plt.axhline(y=overall_high_median, color="orange", linestyle="--", label="Overall HIGH Median")
+    plt.axhline(y=overall_low_median, color="black", linestyle="--", label="Overall LOW Median")
+
+    # a, b = np.polyfit(x, y, 1)
+
+    # Create a custom colorbar
+    cbar = plt.colorbar(scatter)
+    cbar.set_label("Class Label")
+    cbar.set_ticks([0.25, 0.75])
+    cbar.set_ticklabels(["LOW", "HIGH"])
+
+    plt.legend()  # Show legend for lines
+    plt.grid(True)
     plt.show()
 
 
 # TODO: Could give plots colours for locations?
-def plot_radiance_histogram():
+def plot_radiance_histogram_means():
     data = get_all_data()
     means = data["means"]
-    medians = data["medians"]
     encoded_Y = data["encoded_Y"]
     # -----------------
-
-    values = medians
+    values = means
 
     high_means = [mean for mean, label in zip(means, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "HIGH"]
     low_means = [mean for mean, label in zip(means, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "LOW"]
@@ -398,21 +447,16 @@ def plot_radiance_histogram():
     print("overall_high_avg", overall_high_avg)
     print("overall_low_avg", overall_low_avg)
 
-    blue = "#1f77b4"
-    red = "#d62728"
     colors = [blue, red]
     cmap = mcolors.ListedColormap(colors)
-
     x_values = np.arange(len(values))
-    # jitter_amount = 0.1
-    # jittered_x = np.array(range(len(x_values))) + np.random.uniform(-jitter_amount, jitter_amount, len(x_values))
 
     # Create the scatter plot
     plt.figure(figsize=(10, 6))
     scatter = plt.scatter(x_values, values, c=encoded_Y, cmap=cmap, marker="o", alpha=0.7)
     plt.xlabel("Sample Index")
     plt.ylabel("Radiance")
-    plt.title("Full Dataset Mean Values")
+    plt.title("Scatter Radiance All Locations (Means)")
 
     # Draw horizontal lines for overall average values
     plt.axhline(y=overall_high_avg, color="orange", linestyle="--", label="Overall HIGH Avg")
@@ -485,16 +529,117 @@ def plot_picket_fence():
     # TODO: DO picket fence per location for the sub-locations?
 
 
+FROM_DATE_COLUMN = "From date"
+TO_DATE_COLUMN = "To date"
+
+
+def plot_ground_truth_vs_real():
+    # --- GROUND TRUTH ---
+    path = "./data/03-reliability-datasets/Huzurpur-Bahraich-all.csv"
+    data = pd.read_csv(path)
+    # Convert 'Date' column to datetime
+    data["Date"] = pd.to_datetime(data["Date"])
+    # Calculate the mean of each row (hour)
+    data["Hour Mean"] = data.iloc[:, 3:].mean(axis=1)
+
+    # --- To plot mean of every hour ---
+    # # Group the data by 'Hour' and 'Date', and calculate the mean of 'Hour Mean'
+    # grouped_data = data.groupby(["Hour", "Date"])["Hour Mean"].mean().reset_index()
+    # # Plotting
+    # plt.figure(figsize=(10, 6))
+    # for hour in grouped_data["Hour"].unique():
+    #     hour_data = grouped_data[grouped_data["Hour"] == hour]
+    #     plt.scatter(hour_data["Date"], hour_data["Hour Mean"], label=f"Hour {hour}", alpha=0.7)
+
+    # --- To plot pf every day (with regression line) ---
+    # Group the data by 'Date' and calculate the mean of 'Hour Mean'
+    grouped_data = data.groupby("Date")["Hour Mean"].mean().reset_index()
+
+    # Plotting the "real" data mean values
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    colors = [red if value < 130 else blue for value in grouped_data["Hour Mean"]]
+    ax1.scatter(grouped_data["Date"], grouped_data["Hour Mean"], c=colors, label="Daily Mean", alpha=0.7)
+
+    # Fit linear regression model
+    X = np.array(range(len(grouped_data))).reshape(-1, 1)
+    y = grouped_data["Hour Mean"].values
+    model = LinearRegression()
+    model.fit(X, y)
+
+    # Plot regression line
+    plt.plot(grouped_data["Date"], model.predict(X), color=grey, linestyle="--", label="Trend Line")
+    # Set labels and title for the primary y-axis (left)
+    ax1.set_xlabel("Date")
+    ax1.set_ylabel("Ground Truth Voltage", color=blue)
+    ax1.tick_params(axis="y", labelcolor=blue)
+
+    # --- REAL DATA ---
+
+    input_folder = "./data/07-cropped-images"
+    foldername = "Huzurpur-Bahraich-all-buffer-1-miles"
+    real_path = f"{input_folder}/{foldername}"
+    filepaths = helpers.getAllFilesFromFolderWithFilename(real_path, "")
+
+    real_data_means = []
+    real_data_medians = []
+    real_data_dates = []
+
+    for filename in filepaths:
+        filepath = f"{real_path}/{filename}"
+
+        with rasterio.open(filepath) as src:
+            array = src.read()
+            array = array[0]
+
+            # Fill NaN's
+            image_mean = np.nanmean(array)
+            array[np.isnan(array)] = image_mean  # Replace NaN with image mean
+
+            # Recalculate means and medians after filling nans
+            image_mean = np.nanmean(array)
+            image_median = np.nanmedian(array)
+            print("image_mean: ", image_mean)
+            print("image_median: ", image_median)
+
+            # Handle dates
+            path_from_julian_date_onwards = filepath.split(f"vnp46a2-a", 1)[1]
+            julian_date = path_from_julian_date_onwards.split("-")[0]
+            date = helpers.get_datetime_from_julian_date(julian_date)
+            print("date: ", date)
+
+            real_data_means.append(image_mean)
+            real_data_medians.append(image_median)
+            real_data_dates.append(date)
+
+    # Create a secondary y-axis (right)
+    ax2 = ax1.twinx()
+    radiance_scaled = np.interp(real_data_means, (0, 7), (0, 250))
+
+    # Plot the "real" data mean values on the secondary y-axis
+    ax2.scatter(real_data_dates, radiance_scaled, c=green, label="Satellite Radiance Mean", alpha=0.7)
+    ax2.set_ylabel("Satellite Radiance Mean", color=green)
+    ax2.tick_params(axis="y", labelcolor=green)
+
+    # --- Overall final plotting ---
+    # plt.xlabel("Date")
+    plt.title("Daily Voltage Mean with Trend Line. Huzurpur, Bahraich.")
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+
 # RESULTS
-def straight_line_analysis():
+def straight_line_analysis_means():
     data = get_all_data()
     means = data["means"]
     encoded_Y = data["encoded_Y"]
     # -----------------
     values = means
 
-    high_means = [mean for mean, label in zip(values, encoded_Y) if label == 1]
-    low_means = [mean for mean, label in zip(values, encoded_Y) if label == 0]
+    high_means = [mean for mean, label in zip(values, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "HIGH"]
+    low_means = [mean for mean, label in zip(values, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "LOW"]
 
     overall_high_avg = np.nanmean(high_means)
     overall_low_avg = np.nanmean(low_means)
@@ -512,6 +657,33 @@ def straight_line_analysis():
 
     print("High correct = ", sum(i > middle for i in high_means))
     print("Low correct = ", sum(i < middle for i in low_means))
+
+
+def straight_line_analysis_medians():
+    data = get_all_data()
+    medians = data["medians"]
+    encoded_Y = data["encoded_Y"]
+    # -----------------
+    values = medians
+
+    high_medians = [median for median, label in zip(values, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "HIGH"]
+    low_medians = [median for median, label in zip(values, encoded_Y) if INVERSE_CLASS_MAPPING[label] == "LOW"]
+
+    # For overall analysis
+    overall_high_median = np.nanmedian(high_medians)
+    overall_low_median = np.nanmedian(low_medians)
+    print("overall_high_median", overall_high_median)
+    print("overall_low_median", overall_low_median)
+    middle = (overall_high_median + overall_low_median) / 2
+    print("middle", middle)
+    # Results
+    high_items_count = sum(i > overall_high_median for i in values)
+    low_items_count = sum(i < overall_low_median for i in values)
+    print("high_items_count", high_items_count)
+    print("low_items_count", low_items_count)
+
+    print("High correct = ", sum(i > middle for i in high_medians))
+    print("Low correct = ", sum(i < middle for i in low_medians))
 
 
 def low_value_analysis():
@@ -540,6 +712,113 @@ def low_value_analysis():
     print("LOW count", low_count)
     # Count 2923
     # LOW count 1597
+
+
+def get_sub_locations_counts():
+    data = get_all_data()
+    sub_locations = data["sub_locations"]
+    classifications = data["classifications"]
+
+    sub_location_counts = {}
+
+    for sub_location, label in zip(sub_locations, classifications):
+        if sub_location not in sub_location_counts:
+            sub_location_counts[sub_location] = {"count": 0, "high-count": 0, "low-count": 0}
+
+        sub_location_counts[sub_location]["count"] += 1
+        sub_location_counts[sub_location][f"{label.lower()}-count"] += 1
+
+    return sub_location_counts
+
+
+def get_valuable_locations():
+    data = get_sub_locations_counts()
+    valuable_overall_count = 100
+    valuable_ratio = 0.3
+
+    filtered_data = {}
+
+    for location, counts in data.items():
+        count = counts["count"]
+        low_count = counts["low-count"]
+        high_count = counts["high-count"]
+
+        has_good_low_ratio = low_count / (count) > valuable_ratio
+        has_good_high_ratio = high_count / (count) > valuable_ratio
+
+        if count > valuable_overall_count and has_good_low_ratio and has_good_high_ratio:
+            filtered_data[location] = counts
+
+    print("filtered_data", filtered_data)
+
+
+def historical_z_score_analysis():
+    data = get_all_data()
+    all_items = data["all_items"]
+
+    # valuable locations from 'get_valuable_locations' above
+    sub_location_names = [
+        "jagatapur-bahraich",
+        "huzurpur-bahraich",
+        "dashehrabagh-barabanki",
+        "devtapur-sitapur[offline]",
+        "tedwadih--sitapur",
+        "sahdipur-sitapur",
+        "jhauwa-khurd--sitapur",
+        "khindaura--sitapur",
+    ]
+
+    for sub_location_name in sub_location_names:
+        sub_location_data = [item for item in all_items if item["sub-location"] == sub_location_name]
+        classifications = [item["classification"] for item in sub_location_data]
+        encoded_Y = get_y_encoded(classifications)
+
+        # z_scores = data["z_scores"]
+        # locations = data["locations"]
+        # sub_location = data["sub_locations"]
+
+        # print("len sub_locations", len(sub_location_data))
+        # print("len encoded_Y", len(encoded_Y))
+
+        # reandom_state key allows predictable results
+        trainX, testX, trainY, testY = train_test_split(sub_location_data, encoded_Y, train_size=0.7, random_state=42)
+
+        trainX_originals = [item["original"] for item in trainX]
+        trainX_originals = reshape_original_data(trainX_originals)
+
+        testX_originals = [item["original"] for item in testX]
+        testX_originals = reshape_original_data(testX_originals)
+
+        # Calculate Z score array on trainX
+        mean = np.nanmean(trainX_originals)
+        std_deviation = np.nanstd(trainX_originals)
+        z_scores = (testX_originals - mean) / std_deviation
+
+        high = sum(INVERSE_CLASS_MAPPING[label] == "HIGH" for label in testY)
+        low = sum(INVERSE_CLASS_MAPPING[label] == "LOW" for label in testY)
+
+        # Results
+        high_correct = 0
+        low_correct = 0
+        size = len(z_scores)
+
+        for item, label in zip(z_scores, testY):
+            median = np.nanmedian(item)
+            if median > 0:
+                if INVERSE_CLASS_MAPPING[label] == "HIGH":
+                    high_correct = high_correct + 1
+            if median < 0:
+                if INVERSE_CLASS_MAPPING[label] == "LOW":
+                    low_correct = low_correct + 1
+
+        # print("high_correct", high_correct)
+        # print("low_correct", low_correct)
+        total_correct = high_correct + low_correct
+        # print("total correct", total_correct)
+        print(f"----------- {sub_location_name} ------------")
+        print("Size", size)
+        print("high/low%", f"{high / len(testY)}/{low / len(testY)}")
+        print("Accuracy", (100 / size) * total_correct)
 
 
 if __name__ == "__main__":

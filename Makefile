@@ -28,7 +28,7 @@ STATE = "Uttar Pradesh"
 LOCATION = "Varanasi"
 TILE_DESCRIPTOR = "h26v06" # A MODIS tile descriptor
 GRID_RELIABILITY = "HIGH" # Either LOW or HIGH
-BUFFER_DISTANCE_MILES = "1"
+BUFFER_DISTANCE_MILES = "5"
 
 # May need:
 # - Bahraich
@@ -71,8 +71,8 @@ BUFFER_DISTANCE_MILES = "1"
 07-crop-images:
 		python3 -m nightlightsprocessing.07_crop_images --reliability-dataset-input-folder ${O3_RELIABILITY_DATASETS_PATH} --vnp46a2-tif-input-folder ${O5_PROCESSED_VNP46A2_IMAGES} --shapefile-input-folder ${O6_LOCATION_SHAPEFILES} --destination ${O7_CROPPED_IMAGES}/${LOCATION}-buffer-${BUFFER_DISTANCE_MILES}-miles --buffer ${BUFFER_DISTANCE_MILES} --state ${STATE} --location ${LOCATION}
 
-08-run-model:
-		python3 -m nightlightsprocessing.08_run_model
+08-regression-models:
+		python3 -m nightlightsprocessing.08_regression_models
 
 09-test:
 		python3 -m nightlightsprocessing.09_test
@@ -82,7 +82,7 @@ BUFFER_DISTANCE_MILES = "1"
 
 # Ancillary
 average-images:
-		python3 -m nightlightsprocessing.average_images plot_overall_vs_scaled
+		python3 -m nightlightsprocessing.average_images plot_radiance_histogram_medians
 
 clean-cropped-images:
 		python3 -m nightlightsprocessing.clean_cropped_images

@@ -16,7 +16,7 @@ data/04-VNP46A2-h5/*
 data/05-processed-VNP46A2-images/*
 data/06-location-shapefiles/*
 data/07-cropped-images/*
-
+sub-locations.json
 
 *.pyc
 nightlights_processing.egg-info

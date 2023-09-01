@@ -5,6 +5,7 @@
 
 import argparse
 import sys
+from matplotlib import pyplot as plt
 import numpy as np
 import numpy.ma as ma
 import os
@@ -27,11 +28,14 @@ FILE_TYPE_VNP46A2 = "VNP46A2"
 dnb_brdf_corrected_ntl_fill_value = 6553.5
 MANDATORY_QUALITY_FLAG_FILL_VALUE = 255
 MANDATORY_QUALITY_FLAG_POOR_QUALITY_VALUE = 2
-# Need to validate this as value in docs says '10'
+
+# 0 bit value == 0
+CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_CONFIDENT_CLEAR = 0
+# 2 bit value == 10
 CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_PROBABLY_CLOUDY = 2
-# Need to validate this as value in docs says '11'
+# 3 bit value == 11
 CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_CONFIDENT_CLOUDY = 3
-# Need to validate this as value in docs says '011'
+# 3 bit value == 11
 CLOUD_MASK_QUALITY_FLAG_LAND_WATER_BACKGROUND_SEA_WATER = 3
 
 ################################################################################
@@ -47,9 +51,11 @@ def extract_qa_bits(qa_band, start_bit, end_bit):
     #  to the QA bits to check/extract
     for bit in range(start_bit, end_bit + 1):
         qa_bits += bit**2
+
     # Check QA band against specified QA bits to see what
     #  QA flag values are set
     qa_flags_set = qa_band & qa_bits
+
     # Get base-10 value that matches bitmask documentation
     #  (0-1 for single bit, 0-3 for 2 bits, or 0-2^N for N bits)
     qa_values = qa_flags_set >> start_bit
@@ -123,26 +129,24 @@ def applyMandatoryQualityFlagMask(array, mandatory_quality_flag_band):
 
 
 def applyCloudQualityFlagMask(array, QF_cloud_mask_band):
+    # Works differently from the quality flag mask as we need to extract a bitmask value from the mask band
     # Cloud Detection Results & Confidence Indicator: Extract QF_Cloud_Mask bits 6-7
     cloud_detection_bitmask = extract_qa_bits(qa_band=QF_cloud_mask_band, start_bit=6, end_bit=7)
-    masked_for_probably_cloudy = ma.masked_where(
+
+    masked_if_not_clear = ma.masked_where(
         cloud_detection_bitmask
-        == CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_PROBABLY_CLOUDY,
+        != CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_CONFIDENT_CLEAR,
         array,
-        copy=True,
-    )
-    masked_for_confident_cloudy = ma.masked_where(
-        cloud_detection_bitmask
-        == CLOUD_MASK_QUALITY_FLAG_CLOUD_DETECTION_RESULTS_AND_CONFIDENCE_INDICATOR_CONFIDENT_CLOUDY,
-        masked_for_probably_cloudy,
         copy=True,
     )
 
     # Land/Water Background: Extract QF_Cloud_Mask bits 1-3
     land_water_bitmask = extract_qa_bits(qa_band=QF_cloud_mask_band, start_bit=1, end_bit=3)
+    unique_values = np.unique(land_water_bitmask)
+
     masked_for_sea_water = ma.masked_where(
         land_water_bitmask == CLOUD_MASK_QUALITY_FLAG_LAND_WATER_BACKGROUND_SEA_WATER,
-        masked_for_confident_cloudy,
+        masked_if_not_clear,
         copy=True,
     )
 
@@ -164,46 +168,84 @@ def extract_band(hd5_filepath, band_name):
     return band
 
 
+total_pixels = 0
+total_brdf_fill_values = 0
+total_qf_fill_values = 0
+total_cloud_fill_values = 0
+
+
 def process_vnp46a2(hd5_filepath, destination):
+    global total_pixels
+    global total_brdf_fill_values
+    global total_qf_fill_values
+    global total_cloud_fill_values
+
     try:
+        # Extract certain bands of interst from the VNP46A2 datasets
         DNB_BRDF_corrected_ntl_band = extract_band(hd5_filepath, constants.BRDF_CORRECTED)
         mandatory_quality_flag_band = extract_band(hd5_filepath, constants.QUALITY_FLAG)
         QF_cloud_mask_band = extract_band(hd5_filepath, constants.CLOUD_MASK)
 
+        # ----- DNB BRDF -----
         print("Applying scale factor...")
         dnb_brdf_corrected_ntl_scaled = DNB_BRDF_corrected_ntl_band.astype("float") * 0.1
+        print("radiance raw", DNB_BRDF_corrected_ntl_band[:100])
+        pixels = len(dnb_brdf_corrected_ntl_scaled.flatten())
+        total_pixels = total_pixels + pixels
+        print("radiance", dnb_brdf_corrected_ntl_scaled[:100])
+
         print("Masking for fill values...")
         masked_for_fill_value_array = removeMissingDataFrom(dnb_brdf_corrected_ntl_scaled)
+        print("masked_for_fill_value_array flattened length", len(masked_for_fill_value_array.flatten()))
+
+        # To count brdf fill values
+        brdf_fill_values = ma.count_masked(masked_for_fill_value_array)
+        total_brdf_fill_values = total_brdf_fill_values + brdf_fill_values
+        print("brdf_fill_values", brdf_fill_values)
+
+        # ----- QUALITY FLAG -----
         print("Masking for poor quality and no retrieval...")
         masked_for_poor_quality_and_no_retrieval_array = applyMandatoryQualityFlagMask(
             masked_for_fill_value_array, mandatory_quality_flag_band
         )
+
+        # To count qf fill values
+        qf_fill_values = ma.count_masked(masked_for_poor_quality_and_no_retrieval_array) - brdf_fill_values
+        print("qf_fill_values", qf_fill_values)
+        total_qf_fill_values = total_qf_fill_values + qf_fill_values
+
+        # ----- CLOUD MASK -----
         print("Masking for clouds...")
         result = applyCloudQualityFlagMask(masked_for_poor_quality_and_no_retrieval_array, QF_cloud_mask_band)
 
-        # TODO: Do I need to do this?
-        # print("Masking for sensor problems...")
-        # # Mask radiance for sensor problems (QF_DNB != 0)
-        # #  (0 = no problems, any number > 0 means some kind of issue)
-        # # masked_for_sensor_problems = ma.masked_where(
-        # #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
-        # # )
-        # masked_for_sensor_problems = ma.masked_where(
-        #     qf_dnb > 0, masked_for_sea_water, copy=True
-        # )
+        # To count cloud mask fill values
+        cloud_fill_values = ma.count_masked(result) - qf_fill_values
+        total_cloud_fill_values = total_cloud_fill_values + cloud_fill_values
 
-        print("Filling masked values...")
-        # Set fill value to np.nan and fill masked values
+        # ----- OVERALL -----
+        # # TODO: Do I need to do this?
+        # # print("Masking for sensor problems...")
+        # # # Mask radiance for sensor problems (QF_DNB != 0)
+        # # #  (0 = no problems, any number > 0 means some kind of issue)
+        # # # masked_for_sensor_problems = ma.masked_where(
+        # # #     qf_dnb > 0, masked_for_confident_cloudy, copy=True
+        # # # )
+        # # masked_for_sensor_problems = ma.masked_where(
+        # #     qf_dnb > 0, masked_for_sea_water, copy=True
+        # # )
+
+        # print("Filling masked values...")
+        # # Set fill value to np.nan and fill masked values
         ma.set_fill_value(result, np.nan)
         filled_data = result.filled()
 
-        # IF ANY INDIVIDUAL PLOTTING NEEDED
+        # # IF ANY INDIVIDUAL PLOTTING NEEDED
         # flat_results = np.concatenate(filled_data).ravel()
 
-        # plt.plot(flat_results, marker="o")
-        # plt.xlabel("Index")
-        # plt.ylabel("Value")
-        # plt.title("Plot of Array Values")
+        # plt.plot(flat_results, marker="o", c="#1f77b4", alpha=0.7)
+        # plt.xlabel("Pixel index")
+        # plt.ylabel("Radiance value")
+        # plt.title("Image Radiance Values")
         # plt.grid(True)
         # plt.show()
 
@@ -217,11 +259,12 @@ def process_vnp46a2(hd5_filepath, destination):
             crs="epsg:4326",
         )
 
-        # Export masked array to GeoTiff (no data set to np.nan in export)
+        # # Export masked array to GeoTiff (no data set to np.nan in export)
         export_name = helpers.get_hd5_to_tif_export_name(hd5_filepath)
+        output_path = os.path.join(destination, export_name)
         helpers.export_array(
             array=filled_data,
-            output_path=os.path.join(destination, export_name),
+            output_path=output_path,
             metadata=metadata,
         )
     except Exception as error:
@@ -241,12 +284,20 @@ def process_VNP46A2_images(input_folder, destination):
     print("\n")
     print(f"Total files to process: {total_files}\n")
 
-    for filename in all_hd5_files:
+    for filename in all_hd5_files[:10]:
         filepath = f"{input_folder}/{filename}"
 
         process_vnp46a2(filepath, destination)
         processed_files += 1
         print(f"\nPreprocessed file: {processed_files} of {total_files}\n")
+
+    print("Total pixels", total_pixels)
+    print("Total fill values", total_brdf_fill_values)
+    print("Total fill %", (100 / total_pixels) * total_brdf_fill_values)
+    print("Total qf values", total_qf_fill_values)
+    print("Total qf %", (100 / total_pixels) * total_qf_fill_values)
+    print("Total cloud mask values", total_cloud_fill_values)
+    print("Total cloud mask %", (100 / total_pixels) * total_cloud_fill_values)
 
     # -------------------------SCRIPT COMPLETION--------------------------------- #
     print("\n")

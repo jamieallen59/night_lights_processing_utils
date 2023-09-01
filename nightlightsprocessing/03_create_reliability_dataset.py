@@ -184,6 +184,17 @@ def create_reliability_dataset(
     result.to_csv(write_unique_date_location_combinations_path)
 
 
+def create_non_filtered_sub_location_reliability_dataset(input_folder, destination, state, location, sub_location):
+    print("Creating dataset for ", sub_location)
+    df = _get_concatenated_groundtruth_sorted_by_date(input_folder, state, location)
+    result_filtered_by_sub_location = df[(df[LOCATION_NAME_COLUMN] == sub_location)]
+    print("result_filtered_by_sub_location: ", result_filtered_by_sub_location)
+
+    sub_location_write_path = f"{destination}/{sub_location}-all.csv"
+    print("Writing sub-location all data to: ", sub_location_write_path)
+    result_filtered_by_sub_location.to_csv(sub_location_write_path)
+
+
 ################################################################################
 
 
@@ -222,16 +233,20 @@ def _main(argv):
 
     args = parser.parse_args(argv[1:])
 
-    for grid_reliability in constants.GRID_RELIABILITIES:
-        create_reliability_dataset(
-            args.input_folder,
-            args.destination,
-            args.state,
-            args.location,
-            grid_reliability,
-            args.low_reliability_voltage,
-            args.high_reliability_voltage,
-        )
+    # for grid_reliability in constants.GRID_RELIABILITIES:
+    #     create_reliability_dataset(
+    #         args.input_folder,
+    #         args.destination,
+    #         args.state,
+    #         args.location,
+    #         grid_reliability,
+    #         args.low_reliability_voltage,
+    #         args.high_reliability_voltage,
+    #     )
+    sub_location = "Huzurpur-Bahraich"
+    create_non_filtered_sub_location_reliability_dataset(
+        args.input_folder, args.destination, args.state, args.location, sub_location
+    )
 
 
 if __name__ == "__main__":
