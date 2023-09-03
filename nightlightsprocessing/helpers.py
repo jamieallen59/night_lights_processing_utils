@@ -264,8 +264,10 @@ def get_padded_array(parent_array):
     if not parent_array:
         return []
 
-    max_size_1st = max(arr.shape[0] for arr in parent_array)
-    max_size_2nd = max(arr.shape[1] for arr in parent_array)
+    # max_size_1st = max(arr.shape[0] for arr in parent_array)
+    # max_size_2nd = max(arr.shape[1] for arr in parent_array)
+    max_size_1st = 24
+    max_size_2nd = 27
     print(f"All data reshaped to {max_size_1st}, {max_size_2nd}")
 
     # Pad arrays with nan values to match the maximum size
@@ -296,6 +298,88 @@ def filter_nans(X_train, y_train):
             updated_y_train.append(y_train[i])  # Append the corresponding label
 
     return updated_X_train, updated_y_train
+
+
+def get_y_encoded(ydata):
+    # Make sure HIGH is 1 and LOW is 0
+    # Create array of 0's and 1's for my dataset
+    encoded_Y = [constants.CLASS_MAPPING[label] for label in ydata]
+    encoded_Y = np.array(encoded_Y, dtype=int)
+
+    return encoded_Y
+
+
+def print_results(y_test, y_pred):
+    # print_rmse(y_test, y_pred)
+    print_predict_accuracy(y_test, y_pred)
+
+
+def print_rmse(y_test, y_pred):
+    y_test = get_y_encoded(y_test)
+
+    result = y_test - y_pred
+    squared_errors = (result) ** 2
+    # Calculate the mean of squared errors to get MSE
+    mean_squared_error = np.mean(squared_errors)
+    # Print the MSE
+    print("Mean Squared Error (MSE):", mean_squared_error)
+    # Calculate RMSE
+    root_mean_squared_error = np.sqrt(mean_squared_error)
+    print("Mean Squared Error (RMSE):", root_mean_squared_error)
+
+
+from sklearn.metrics import accuracy_score
+
+
+#  for simple analysis
+def print_predict_accuracy(y_test, y_pred):
+    encoded_Y = get_y_encoded(y_test)
+
+    predicted_labels = np.where(y_pred > 0.5, 1, 0).flatten()
+
+    count_zeros = 0
+    count_ones = 0
+    for item in predicted_labels:
+        if item == 0:
+            count_zeros = count_zeros + 1
+        if item == 1:
+            count_ones = count_ones + 1
+
+    print("Prediction labels counts (zeros, ones)", count_zeros, count_ones)
+
+    accuracy = accuracy_score(encoded_Y, predicted_labels)
+
+    HIGH = y_test.count("HIGH")
+    LOW = y_test.count("LOW")
+    total = HIGH + LOW
+    proportion_HIGH = (HIGH / total) * 100
+    proportion_LOW = (LOW / total) * 100
+    print(f"High as proportion of low {proportion_HIGH} / {proportion_LOW}")
+    print(f"Accuracy: {accuracy * 100:.2f}%")
+
+
+#  for regression and ML
+def print_predict_accuracy_preencoded(y_test, y_pred):
+    predicted_labels = np.where(y_pred > 0.5, 1, 0).flatten()
+
+    count_zeros = 0
+    count_ones = 0
+    for item in predicted_labels:
+        if item == 0:
+            count_zeros = count_zeros + 1
+        if item == 1:
+            count_ones = count_ones + 1
+
+    print("Prediction labels counts (zeros, ones)", count_zeros, count_ones)
+    accuracy = accuracy_score(y_test, predicted_labels)
+
+    HIGH = np.count_nonzero(y_test == constants.CLASS_MAPPING["HIGH"])
+    LOW = np.count_nonzero(y_test == constants.CLASS_MAPPING["LOW"])
+    total = HIGH + LOW
+    proportion_HIGH = (HIGH / total) * 100
+    proportion_LOW = (LOW / total) * 100
+    print(f"High as proportion of low {proportion_HIGH} / {proportion_LOW}")
+    print(f"Prediction Accuracy: {accuracy * 100:.2f}%")
 
 
 def get_training_dataset(input_folder, training_dataset_foldernames):

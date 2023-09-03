@@ -24,3 +24,15 @@ GRID_RELIABILITIES = ["LOW", "HIGH"]
 
 # All available datasets for VNP46A2 listed on page 16 here:
 # https://viirsland.gsfc.nasa.gov/PDF/BlackMarbleUserGuide_v1.2_20220916.pdf
+
+CLASS_MAPPING = {"HIGH": 1, "LOW": 0}
+INVERSE_CLASS_MAPPING = {1: "HIGH", 0: "LOW"}
+
+COLOURS = {
+    "blue": "#1f77b4",
+    "red": "#d62728",
+    "grey": "grey",
+    "green": "green",
+    "orange": "orange",
+    "black": "black",
+}
