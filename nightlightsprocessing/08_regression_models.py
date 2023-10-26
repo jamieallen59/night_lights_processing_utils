@@ -102,6 +102,8 @@ def summarize_diagnostics(history):
 
 #     helpers.print_predict_accuracy_preencoded(y_test, y_pred)
 
+from sklearn.metrics import accuracy_score
+
 
 # In sample
 def in_sample():
@@ -145,22 +147,21 @@ def in_sample():
         test_score = fbeta_score(y_test, test_yhat, average="binary", beta=0.5)
         print("All Ones (sklearn): train=%.3f, test=%.3f" % (train_score, test_score))
 
-        # POLYNOMIAL = True
-        # if POLYNOMIAL:
-        #     run_test_harness_polynomial_regression(X_train, y_train, X_test, y_test)
-
         # run_test_harness_linear_regression(X_train, y_train, X_test, y_test)
 
         # --- LINEAR REGRESSION ---
-        LINEAR_REGRESSION = False
+        LINEAR_REGRESSION = True
         if LINEAR_REGRESSION:
             # Initialize the linear regression model
             model = LinearRegression()
             # Train the model on the training data
             model.fit(X_train, y_train)
             # Get the accuracy against the training data
-            train_accuracy = model.score(X_train, y_train)
-            print(f"Training accuracy: {train_accuracy * 100:.2f}%")
+
+            threshold = 0.5
+            y_train_pred_binary = [1 if y >= threshold else 0 for y in model.predict(X_train)]
+            train_accuracy = accuracy_score(y_train, y_train_pred_binary)
+            print(f"Training Accuracy: {train_accuracy * 100:.2f}%")
 
             # Make predictions on the testing data
             y_pred = model.predict(X_test)
@@ -168,7 +169,7 @@ def in_sample():
             helpers.print_predict_accuracy_preencoded(y_test, y_pred)
 
         # --- LOGISTIC REGRESSION ---
-        LOGISTIC_REGRESSION = True
+        LOGISTIC_REGRESSION = False
         if LOGISTIC_REGRESSION:
             # Initialize the logistic regression model
             model = LogisticRegressionCV(scoring="accuracy", solver="liblinear", class_weight="balanced")
@@ -183,6 +184,8 @@ def in_sample():
 
         predicted_labels = np.where(y_pred > 0.5, 1, 0).flatten()
         fpr, tpr, _ = roc_curve(y_test, predicted_labels)
+        print("fpr", fpr)
+        print("tpr", tpr)
         all_fpr.append(fpr)
         all_tpr.append(tpr)
         all_names.append(location)
@@ -248,21 +251,24 @@ def out_of_sample():
         y_test = helpers.get_y_encoded(y_test)
 
         # --- LINEAR REGRESSION ---
-        LINEAR_REGRESSION = False
+        LINEAR_REGRESSION = True
         if LINEAR_REGRESSION:
             # Initialize the linear regression model
             model = LinearRegression()
             # Train the model on the training data
             model.fit(X_train, y_train)
-            # Get the accuracy against the training data
-            train_accuracy = model.score(X_train, y_train)
-            print(f"Training accuracy: {train_accuracy * 100:.2f}%")
+
+            threshold = 0.5
+            y_train_pred_binary = [1 if y >= threshold else 0 for y in model.predict(X_train)]
+            train_accuracy = accuracy_score(y_train, y_train_pred_binary)
+            print(f"Training Accuracy: {train_accuracy * 100:.2f}%")
+
             # Make predictions on the testing data
             y_pred = model.predict(X_test)
             helpers.print_predict_accuracy_preencoded(y_test, y_pred)
 
         # --- LOGISTIC REGRESSION ---
-        LOGISTIC_REGRESSION = True
+        LOGISTIC_REGRESSION = False
         if LOGISTIC_REGRESSION:
             # Initialize the logistic regression model
             model = LogisticRegressionCV(scoring="accuracy", solver="liblinear", class_weight="balanced")
@@ -297,5 +303,5 @@ def out_of_sample():
 
 
 if __name__ == "__main__":
-    in_sample()
-    # out_of_sample()
+    # in_sample()
+    out_of_sample()

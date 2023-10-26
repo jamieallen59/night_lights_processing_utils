@@ -1,0 +1,209 @@
+{
+  "jagatapur-bahraich": { "count": 109, "high-count": 71, "low-count": 38 },
+  "huzurpur-bahraich": { "count": 116, "high-count": 81, "low-count": 35 },
+  "dashehrabagh-barabanki": { "count": 129, "high-count": 68, "low-count": 61 },
+  "devtapur-sitapur[offline]": {
+    "count": 304,
+    "high-count": 148,
+    "low-count": 156
+  },
+  "tedwadih--sitapur": { "count": 203, "high-count": 65, "low-count": 138 },
+  "sahdipur-sitapur": { "count": 132, "high-count": 87, "low-count": 45 },
+  "jhauwa-khurd--sitapur": { "count": 212, "high-count": 88, "low-count": 124 },
+  "khindaura--sitapur": { "count": 255, "high-count": 159, "low-count": 96 }
+}
+
+{
+  "nai-basti-bahraich": { "count": 153, "high-count": 150, "low-count": 3 },
+  "bahadurpur-bahraich": { "count": 135, "high-count": 104, "low-count": 31 },
+  "jagatapur-bahraich": { "count": 109, "high-count": 71, "low-count": 38 },
+  "bardaha-bahraich": { "count": 57, "high-count": 36, "low-count": 21 },
+  "qazipura-bahraich-[offline]": {
+    "count": 28,
+    "high-count": 27,
+    "low-count": 1
+  },
+  "samariya-bahraich-[offline]": {
+    "count": 44,
+    "high-count": 22,
+    "low-count": 22
+  },
+  "huzurpur-bahraich": { "count": 116, "high-count": 81, "low-count": 35 },
+  "kanoongopura-bahraich": { "count": 83, "high-count": 82, "low-count": 1 },
+  "kurmaura-bahraich": { "count": 32, "high-count": 10, "low-count": 22 },
+  "ghulam-ali-pura-bahraich": {
+    "count": 105,
+    "high-count": 104,
+    "low-count": 1
+  },
+  "puraini-bahraich": { "count": 48, "high-count": 22, "low-count": 26 },
+  "nazirpura-bahraich": { "count": 169, "high-count": 168, "low-count": 1 },
+  "kanjaya-bahraich": { "count": 90, "high-count": 62, "low-count": 28 },
+  "mihinpurwa-bahraich": { "count": 68, "high-count": 19, "low-count": 49 },
+  "mahasi-bahraich": { "count": 26, "high-count": 6, "low-count": 20 },
+  "bashirganj-bahraich": { "count": 82, "high-count": 80, "low-count": 2 },
+  "khutehna-bahraich-[offline]": {
+    "count": 11,
+    "high-count": 0,
+    "low-count": 11
+  },
+  "dhanwa-ramsahaypurwa-bahraich-[offline]": {
+    "count": 9,
+    "high-count": 7,
+    "low-count": 2
+  },
+  "sarsa-bahraich-[offline]": { "count": 1, "high-count": 0, "low-count": 1 },
+  "awas-vikas-colony-barabanki": {
+    "count": 158,
+    "high-count": 157,
+    "low-count": 1
+  },
+  "naipura-barabanki": { "count": 21, "high-count": 2, "low-count": 19 },
+  "dariyabad-barabanki": { "count": 58, "high-count": 42, "low-count": 16 },
+  "kanjwara-barabanki": { "count": 124, "high-count": 110, "low-count": 14 },
+  "paisar-barabanki": { "count": 133, "high-count": 133, "low-count": 0 },
+  "haidergarh-barabanki": { "count": 76, "high-count": 54, "low-count": 22 },
+  "fatehpur-barabanki": { "count": 76, "high-count": 71, "low-count": 5 },
+  "belhara-barabanki-[offline]": {
+    "count": 29,
+    "high-count": 18,
+    "low-count": 11
+  },
+  "palhari-barabanki": { "count": 125, "high-count": 101, "low-count": 24 },
+  "ibrahimpur-barabanki": { "count": 22, "high-count": 1, "low-count": 21 },
+  "kotwa-dham-barabanki-[offline]": {
+    "count": 2,
+    "high-count": 0,
+    "low-count": 2
+  },
+  "baraulia-barabanki": { "count": 67, "high-count": 61, "low-count": 6 },
+  "dashehrabagh-barabanki": { "count": 129, "high-count": 68, "low-count": 61 },
+  "paigwa-barabanki": { "count": 90, "high-count": 80, "low-count": 10 },
+  "kasraila-barabanki": { "count": 58, "high-count": 31, "low-count": 27 },
+  "karsanda-barabanki": { "count": 48, "high-count": 14, "low-count": 34 },
+  "tap-sipaha-barabanki": { "count": 77, "high-count": 2, "low-count": 75 },
+  "ganeshpur-barabanki": { "count": 185, "high-count": 146, "low-count": 39 },
+  "gondaura-barabanki": { "count": 34, "high-count": 21, "low-count": 13 },
+  "barra-2--kanpur-[offline]": { "count": 1, "high-count": 1, "low-count": 0 },
+  "panki--kanpur-[offline]": {
+    "count": 383,
+    "high-count": 382,
+    "low-count": 1
+  },
+  "shastri-nagar-kanpur-[offline]": {
+    "count": 213,
+    "high-count": 211,
+    "low-count": 2
+  },
+  "vikas-nagar--kanpur": { "count": 599, "high-count": 593, "low-count": 6 },
+  "birhana-road--kanpur-[offline]": {
+    "count": 129,
+    "high-count": 126,
+    "low-count": 3
+  },
+  "swaroop-nagar---kanpur-[offline]": {
+    "count": 79,
+    "high-count": 71,
+    "low-count": 8
+  },
+  "civil-line--kanpur-[offline]": {
+    "count": 351,
+    "high-count": 345,
+    "low-count": 6
+  },
+  "panki-cf--kanpur-[offline]": {
+    "count": 292,
+    "high-count": 291,
+    "low-count": 1
+  },
+  "masvanpur-kanpur": { "count": 442, "high-count": 428, "low-count": 14 },
+  "barra---kanpur-[offline]": {
+    "count": 343,
+    "high-count": 343,
+    "low-count": 0
+  },
+  "kakadeo-kanpur": { "count": 574, "high-count": 570, "low-count": 4 },
+  "thangaon-sitapur": { "count": 166, "high-count": 3, "low-count": 163 },
+  "devtapur-sitapur[offline]": {
+    "count": 304,
+    "high-count": 148,
+    "low-count": 156
+  },
+  "tedwadih--sitapur": { "count": 203, "high-count": 65, "low-count": 138 },
+  "manwan--sitapur": { "count": 127, "high-count": 4, "low-count": 123 },
+  "sahdipur-sitapur": { "count": 132, "high-count": 87, "low-count": 45 },
+  "tarinpur-sitapur": { "count": 163, "high-count": 162, "low-count": 1 },
+  "pahadpur-sitapur": { "count": 15, "high-count": 0, "low-count": 15 },
+  "kankari--sitapur": { "count": 117, "high-count": 0, "low-count": 117 },
+  "vijay-laxmi-nagar-sitapur": {
+    "count": 134,
+    "high-count": 133,
+    "low-count": 1
+  },
+  "jyotishah-alampur--sitapur-[offline]": {
+    "count": 109,
+    "high-count": 9,
+    "low-count": 100
+  },
+  "muradpur--sitapur": { "count": 63, "high-count": 26, "low-count": 37 },
+  "anand-nagar-sitapur": { "count": 100, "high-count": 93, "low-count": 7 },
+  "kamhira-kathura---sitapur": {
+    "count": 219,
+    "high-count": 32,
+    "low-count": 187
+  },
+  "mukimpur-sitapur-[offline]": {
+    "count": 57,
+    "high-count": 0,
+    "low-count": 57
+  },
+  "ichauli--sitapur": { "count": 106, "high-count": 1, "low-count": 105 },
+  "biswan-sitapur": { "count": 67, "high-count": 48, "low-count": 19 },
+  "jhauwa-khurd--sitapur": { "count": 212, "high-count": 88, "low-count": 124 },
+  "khindaura--sitapur": { "count": 255, "high-count": 159, "low-count": 96 },
+  "pandeypur--varanasi-[offline]": {
+    "count": 362,
+    "high-count": 357,
+    "low-count": 5
+  },
+  "shivpur-varanasi-[offline]": {
+    "count": 126,
+    "high-count": 30,
+    "low-count": 96
+  },
+  "bhairav-talab---varanasi-[offline]": {
+    "count": 101,
+    "high-count": 3,
+    "low-count": 98
+  },
+  "jayapur--varanasi-[offline]": {
+    "count": 101,
+    "high-count": 3,
+    "low-count": 98
+  },
+  "sonarpura-varanasi-[offline]": {
+    "count": 44,
+    "high-count": 42,
+    "low-count": 2
+  },
+  "sarang-talab---varanasi-[offline]": {
+    "count": 301,
+    "high-count": 297,
+    "low-count": 4
+  },
+  "sundarpur---varanasi-[offline]": {
+    "count": 163,
+    "high-count": 155,
+    "low-count": 8
+  },
+  "samneghat--varanasi-[offline]": {
+    "count": 44,
+    "high-count": 44,
+    "low-count": 0
+  },
+  "sarnath---varanasi-[offline]": {
+    "count": 104,
+    "high-count": 2,
+    "low-count": 102
+  }
+}

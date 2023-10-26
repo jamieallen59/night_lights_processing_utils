@@ -78,7 +78,7 @@ BUFFER_DISTANCE_MILES = "5"
 		python3 -m nightlightsprocessing.09_ml_model
 
 10-plotting:
-		python3 -m nightlightsprocessing.10_plotting straight_line_analysis
+		python3 -m nightlightsprocessing.10_plotting plot_picket_fence
 
 
 # TODO: should turn all this to one entry point with script arguements (assuming it stays as one package)

@@ -9,13 +9,13 @@ from . import helpers
 from . import constants
 
 # Currently ALL AT Up to 60% NAN
-TRAINING_DATASET_FOLDERNAMES = [
-    "Bahraich-buffer-5-miles",
-    "Barabanki-buffer-5-miles",
-    "Kanpur-buffer-5-miles",
-    "Sitapur-buffer-5-miles",
-    # "Varanasi-buffer-5-miles",
-]
+# TRAINING_DATASET_FOLDERNAMES = [
+#     "Bahraich-buffer-5-miles",
+#     "Barabanki-buffer-5-miles",
+#     "Kanpur-buffer-5-miles",
+#     "Sitapur-buffer-5-miles",
+#     # "Varanasi-buffer-5-miles",
+# ]
 
 
 TEST_SIZE = 0.3
@@ -47,7 +47,7 @@ def fbeta(y_true, y_pred, beta=0.5):
 
 
 # plot diagnostic learning curves
-def summarize_diagnostics(history):
+def summarize_diagnostics(history, name):
     fig, axes = pyplot.subplots(3, 1, figsize=(8, 12))
 
     if history.history["loss"] and history.history["val_loss"]:
@@ -70,13 +70,15 @@ def summarize_diagnostics(history):
 
     # save plot to file
     pyplot.tight_layout()
-    filename = sys.argv[0].split("/")[-1]
-    pyplot.savefig(filename + "_plot.png")
+    pyplot.savefig(name + "_plot.png")
     pyplot.close()
 
 
+from sklearn.utils.class_weight import compute_class_weight
+
+
 # define cnn model
-def define_simple_model(in_shape=(24, 27, 1), out_shape=1):
+def define_simple_model(in_shape, out_shape):
     model = keras.models.Sequential()
 
     # 3 block vgg style architechture
@@ -93,6 +95,7 @@ def define_simple_model(in_shape=(24, 27, 1), out_shape=1):
         )
     )
     # model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.Dropout(0.2))
     model.add(
         keras.layers.Conv2D(
             32,
@@ -107,21 +110,6 @@ def define_simple_model(in_shape=(24, 27, 1), out_shape=1):
     model.add(keras.layers.MaxPooling2D((2, 2)))
     model.add(keras.layers.GaussianNoise(0.1))
     model.add(keras.layers.Dropout(0.2))
-    # VGG block 2
-    # model.add(keras.layers.Conv2D(64, (3, 3), activation="relu", kernel_initializer="he_uniform", padding="same"))
-    # model.add(keras.layers.BatchNormalization())
-    # model.add(keras.layers.Conv2D(64, (3, 3), activation="relu", kernel_initializer="he_uniform", padding="same"))
-    # model.add(keras.layers.BatchNormalization())
-    # model.add(keras.layers.MaxPooling2D((2, 2)))
-    # model.add(keras.layers.GaussianNoise(0.1))
-    # model.add(keras.layers.Dropout(0.3))
-    # # VGG block 3
-    # model.add(keras.layers.Conv2D(128, (3, 3), activation="relu", kernel_initializer="he_uniform", padding="same"))
-    # model.add(keras.layers.Conv2D(128, (3, 3), activation="relu", kernel_initializer="he_uniform", padding="same"))
-    # model.add(keras.layers.BatchNormalization())
-    # model.add(keras.layers.MaxPooling2D((2, 2)))
-    # model.add(keras.layers.GaussianNoise(0.1))
-    # model.add(keras.layers.Dropout(0.4))
 
     # Output part of the model
     model.add(keras.layers.Flatten())
@@ -132,7 +120,7 @@ def define_simple_model(in_shape=(24, 27, 1), out_shape=1):
     )
     # model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.GaussianNoise(0.1))
-    model.add(keras.layers.Dropout(0.3))
+    model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Dense(out_shape, activation="sigmoid"))
 
     # compile model
@@ -143,26 +131,28 @@ def define_simple_model(in_shape=(24, 27, 1), out_shape=1):
     # opt = keras.optimizers.SGD(learning_rate=LEARNING_RATE, momentum=0.9, decay=DECAY_RATE, nesterov=False)
 
     # ADAM
-    # opt = keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+    opt = keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     # Adam w/DECAY
     # opt = keras.optimizers.Adam(
     #     learning_rate=DECAY_LEARNING_RATE,
     #     decay=DECAY_RATE,
     # )
     # Adam for DROP
-    opt = keras.optimizers.Adam()
+    # opt = keras.optimizers.Adam()
     model.compile(optimizer=opt, loss="binary_crossentropy", metrics=[fbeta, "accuracy"])
 
     return model
 
 
-# learning rate schedule
-def step_decay(epoch):
-    initial_lrate = 0.001
-    drop = 0.5
-    epochs_drop = 200.0
-    lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
-    return lrate
+# # learning rate schedule
+# def step_decay(epoch):
+#     initial_lrate = 0.001
+#     drop = 0.5
+#     epochs_drop = 100.0
+#     lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
+#     return lrate
+
+from keras.utils import plot_model
 
 
 # run the test harness for evaluating a model
@@ -177,7 +167,6 @@ def run_test_harness(trainX, trainY, testX, testY):
     print("Train: X=%s, y=%s" % (trainX.shape, trainY.shape))
     print("Test: X=%s, y=%s" % (testX.shape, testY.shape))
 
-    # print("Example data", trainX[:3])
     # To plot some images:
     # for i in range(9):
     #     # define subplot
@@ -187,10 +176,17 @@ def run_test_harness(trainX, trainY, testX, testY):
     #     pyplot.title(constants.INVERSE_CLASS_MAPPING[trainY[i]])  # Assuming trainY contains class indices
     #     # show the figure
     # pyplot.show()
+    # return
 
+    class_weights = compute_class_weight("balanced", classes=np.unique(trainY), y=trainY)
+    class_weight = {1: class_weights[0], 0: class_weights[1]}
+    print("class_weight: ", class_weight)
     # define model
-    model = define_simple_model()
+    model = define_simple_model(in_shape=(24, 27, 1), out_shape=1)
 
+    plot_model(model, to_file="model.png", show_shapes=True)
+
+    return
     # Data augmentation
     # create data generator
     datagen = keras.preprocessing.image.ImageDataGenerator(
@@ -200,8 +196,8 @@ def run_test_harness(trainX, trainY, testX, testY):
     it_train = datagen.flow(trainX, trainY, batch_size=64)
 
     # # learning schedule callback
-    lrate = keras.callbacks.LearningRateScheduler(step_decay)
-    callbacks_list = [lrate]
+    # lrate = keras.callbacks.LearningRateScheduler(step_decay)
+    # callbacks_list = [lrate]
 
     # fit model
     steps = int(trainX.shape[0] / BATCH_SIZE)
@@ -209,51 +205,47 @@ def run_test_harness(trainX, trainY, testX, testY):
         it_train,
         epochs=EPOCHS,
         batch_size=BATCH_SIZE,
-        callbacks=callbacks_list,
+        # callbacks=callbacks_list,
         steps_per_epoch=steps,
         validation_data=(testX, testY),
+        class_weight=class_weight,
     )
 
+    training_evaluation = model.evaluate(trainX, trainY, verbose=0, return_dict=True)
+    print("--- Training evaluation ---")
+    for name, value in training_evaluation.items():
+        print(f"{name}: {value:.4f}")
+
     evaluation = model.evaluate(testX, testY, verbose=0, return_dict=True)
-    print("--- Evaluation ---")
-    print("Epochs: ", EPOCHS)
+    print("--- Validation evaluation ---")
     for name, value in evaluation.items():
         print(f"{name}: {value:.4f}")
 
+    # IN SAMPLE PREDICTION
     # predict
-    predictions = model.predict(testX)
-    # Produces array e.g.
-    # [0.33934796]
-    # [0.99781466]
-    # [0.9986592 ]
-    # So we label < 0.5 as LOW and > 0.5 as HIGH
-    predicted_labels = np.where(predictions > 0.5, 1, 0).flatten()
-
-    print("Actual labels LOW count", np.count_nonzero(testY == constants.CLASS_MAPPING["LOW"]))
-    print("Actual labels HIGH count", np.count_nonzero(testY == constants.CLASS_MAPPING["HIGH"]))
-    print("Prediction labels LOW count", np.count_nonzero(predicted_labels == constants.CLASS_MAPPING["LOW"]))
-    print("Prediction labels HIGH count", np.count_nonzero(predicted_labels == constants.CLASS_MAPPING["HIGH"]))
-
-    count_zeros = 0
-    count_ones = 0
-    for item in predicted_labels:
-        if item == 0:
-            count_zeros = count_zeros + 1
-        if item == 1:
-            count_ones = count_ones + 1
-
-    print("Prediction labels counts (zeros, ones)", count_zeros, count_ones)
+    y_pred = model.predict(testX)
+    helpers.print_predict_accuracy_preencoded(testY, y_pred)
 
     # save model
-    model.save("non_varanasi_final_model.keras")
-    # # learning curves
-    summarize_diagnostics(history)
+    name = "5-miles/weighted_out_sample_kanpur"
+    model.save(f"{name}.keras")
+    # learning curves
+    summarize_diagnostics(history, name)
 
 
 def train_model():
     training_data_input_folder = "./data/07-cropped-images"
 
-    X_train, y_train, overall = helpers.get_training_dataset(training_data_input_folder, TRAINING_DATASET_FOLDERNAMES)
+    X_train, y_train, overall = helpers.get_training_dataset(
+        training_data_input_folder,
+        [
+            "Bahraich-buffer-5-miles",
+            "Barabanki-buffer-5-miles",
+            # "Kanpur-buffer-5-miles",
+            "Sitapur-buffer-5-miles",
+            "Varanasi-buffer-5-miles",
+        ],
+    )
     print("Is data consistent lengths", len(X_train) == len(y_train))
     X_train = np.array(helpers.get_padded_array(X_train))
     X_train = helpers.replace_image_nan_with_means(X_train)
@@ -285,21 +277,26 @@ def train_model():
 import matplotlib.pyplot as plt
 
 
-def run_prediction():
+def out_of_sample_prediction():
     training_data_input_folder = "./data/07-cropped-images"
     PREDICTION_DATASET_FOLDERNAMES = [
-        "Bahraich-buffer-5-miles",
-        "Barabanki-buffer-5-miles",
+        # "Bahraich-buffer-5-miles",
+        # "Barabanki-buffer-5-miles",
         "Kanpur-buffer-5-miles",
-        "Sitapur-buffer-5-miles",
-        "Varanasi-buffer-5-miles",
+        # "Sitapur-buffer-5-miles",
+        # "Varanasi-buffer-5-miles",
     ]
     model_filenames = [
-        "non_bahraich_final_model",
-        "non_barabanki_final_model",
-        "non_kanpur_final_model",
-        "non_sitapur_final_model",
-        "non_varanasi_final_model",
+        # "5-miles/non_bahraich_final_model",
+        # "5-miles/non_barabanki_final_model",
+        # "5-miles/non_kanpur_final_model",
+        # "5-miles/non_sitapur_final_model",
+        # "5-miles/non_varanasi_final_model",
+        # "5-miles/weighted_out_sample_varanasi",
+        # "5-miles/weighted_out_sample_barabanki",
+        # "5-miles/weighted_out_sample_sitapur",
+        # "5-miles/weighted_out_sample_bahraich",
+        "5-miles/weighted_out_sample_kanpur",
     ]
 
     # Initialize arrays to store FPR and TPR for each model
@@ -328,7 +325,8 @@ def run_prediction():
         # Compute ROC curve
         encoded_Y = helpers.get_y_encoded(y_test)
         predicted_labels = np.where(y_pred > 0.5, 1, 0).flatten()
-        fpr, tpr, _ = roc_curve(encoded_Y, predicted_labels)
+        fpr, tpr, _ = roc_curve(encoded_Y, predicted_labels, pos_label=1)
+
         all_fpr.append(fpr)
         all_tpr.append(tpr)
         location = model_filename.replace("non_", "").replace("_final_model", "")
@@ -350,6 +348,141 @@ def run_prediction():
     plt.show()
 
 
+# Just to get the ROC graph really
+def in_sample_prediction():
+    training_data_input_folder = "./data/07-cropped-images"
+    PREDICTION_DATASET_FOLDERNAMES = [
+        "Bahraich-buffer-5-miles",
+        # "Barabanki-buffer-5-miles",
+        # "Kanpur-buffer-5-miles",
+        # "Sitapur-buffer-5-miles",
+        # "Varanasi-buffer-5-miles",
+    ]
+    model_filenames = [
+        "5-miles/in_sample_bahraich",
+        # "5-miles/in_sample_barabanki",
+        # "5-miles/in_sample_kanpur",
+        # "5-miles/in_sample_sitapur",
+        # "5-miles/in_sample_varanasi",
+    ]
+
+    # Initialize arrays to store FPR and TPR for each model
+    all_fpr = []
+    all_tpr = []
+    all_names = []
+
+    thresholds = np.arange(0, 1.1, 0.1)  # You can adjust the step size as needed
+
+    # Initialize arrays to store FPR and TPR values
+    all_fpr = []
+    all_tpr = []
+
+    plt.figure(figsize=(8, 6))
+
+    for prediction_dataset_foldername, model_filename in zip(PREDICTION_DATASET_FOLDERNAMES, model_filenames):
+        location = model_filename.replace("in_sample_", "")
+        print(f"--- {location} ---")
+
+        X_test, y_test, _ = helpers.get_training_dataset(training_data_input_folder, [prediction_dataset_foldername])
+
+        # Just to get 30% of the data for the ROC chart
+        X_test, _, y_test, _ = train_test_split(X_test, y_test, test_size=TEST_SIZE, random_state=42, stratify=y_test)
+
+        X_test = np.array(helpers.get_padded_array(X_test))
+        X_test = helpers.replace_image_nan_with_means(X_test)
+
+        # load model
+        model = keras.models.load_model(f"{model_filename}.keras", custom_objects={"fbeta": fbeta})
+
+        # predict the class
+        y_pred = model.predict(X_test)
+
+        helpers.print_results(y_test, y_pred)
+
+        # Compute ROC curve
+        encoded_Y = helpers.get_y_encoded(y_test)
+
+        # positive_class_index = np.argmax(model.predict(X_test), axis=-1)
+        # yhat_probs = [prediction[positive_class_index] for prediction in model.decision_function(X_test)]
+
+        predictions = (y_pred > 0.5).astype("int32").flatten()
+
+        # print("yhat_probs: ", yhat_probs)
+        # yhat = np.argmax(predictions)
+
+        yhat = predictions == 1
+
+        # yhat = yhat_probs[:, 1]
+
+        # calculate roc curves
+        fpr, tpr, thresholds = roc_curve(encoded_Y, yhat)
+        # plot the roc curve for the model
+        pyplot.plot([0, 1], [0, 1], linestyle="--", label="No Skill")
+        pyplot.plot(fpr, tpr, marker=".", label="Logistic")
+        # axis labels
+        pyplot.xlabel("False Positive Rate")
+        pyplot.ylabel("True Positive Rate")
+        pyplot.legend()
+        # show the plot
+        pyplot.show()
+
+        # predicted_labels = np.where(y_pred > 0.5, 1, 0).flatten()
+        # print("predicted_labels: ", predicted_labels)
+        per_location_fpr = []
+        per_location_tpr = []
+        for threshold in thresholds:
+            print("threshold: ", threshold)
+
+            # Convert predictions to binary class labels based on the threshold
+            predicted_labels = np.where(y_pred > threshold, 1, 0).flatten()
+
+            # Compute ROC curve for the current threshold
+            fpr, tpr, thresh = roc_curve(encoded_Y, predicted_labels)
+            print("fpr: ", fpr)
+            print("tpr: ", tpr)
+
+            # Append FPR and TPR values to the respective arrays
+            per_location_fpr.append(fpr)
+            per_location_tpr.append(tpr)
+
+        print("per_location_fpr: ", len(per_location_fpr))
+        all_fpr.append(per_location_fpr)
+        all_tpr.append(per_location_tpr)
+
+        location = model_filename.replace("non_", "").replace("_final_model", "")
+        all_names.append(location.capitalize())
+
+    print("all_fpr: ", len(all_fpr))
+    print("all_fpr: ", len(all_fpr))
+
+    # print("all_tpr: ", all_tpr)
+
+    # all_roc_auc = []
+
+    # for per_location_fpr, per_location_tpr in zip(all_fpr, all_tpr):
+    #     roc_auc = auc(per_location_fpr[0], per_location_tpr[0])  # Assuming you want to calculate ROC AUC for the first threshold
+    #     all_roc_auc.append(roc_auc)
+
+    # Plot all ROC curves on a single graph
+
+    for i, (inner_fpr, inner_tpr, location) in enumerate(zip(all_fpr, all_tpr, all_names)):
+        for i, (fpr, tpr) in enumerate(zip(inner_fpr, inner_tpr)):
+            roc_auc = auc(fpr, tpr)
+            plt.plot(fpr, tpr, lw=2, label=f"{location} (area = %0.2f)" % roc_auc)
+
+        print("roc_auc: ", roc_auc)
+
+    plt.plot([0, 1], [0, 1], color=constants.COLOURS["grey"], lw=2, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Receiver Operating Characteristic (ROC) - Multiple Models")
+    plt.legend(loc="lower right")
+    # plt.show()
+
+
 if __name__ == "__main__":
-    run_prediction()
-    # train_model()
+    # out_of_sample_prediction()
+    # in_sample_prediction()
+    train_model()

@@ -463,7 +463,7 @@ def plot_picket_fence():
     data = get_all_data()
     locations = data["locations"]
     all_items = data["all_items"]
-    item_type = "scaled_median"
+    item_type = "scaled_mean"
     # -----------------
 
     # Build year and location based dictionary
@@ -498,15 +498,15 @@ def plot_picket_fence():
         x = np.arange(len(locations)) + (i - len(years) / 2) * bar_width  # Adjust the x positions
         ax.bar(x, mean_values, bar_width, label=year, edgecolor="black")
 
-    locations = [location.replace("-", "") for location in locations]
+    locations = [location.replace("-buffer-5-miles", "") for location in locations]
     ax.set_xticks(np.arange(len(locations)))
 
     ax.set_xticklabels(locations, rotation=45)
     ax.tick_params(axis="x", which="major", labelsize=10)
 
     ax.set_xlabel("Location")
-    ax.set_ylabel("Average Radiance (scaled)")
-    ax.set_title("Per location scaled radiance 2014-2019")
+    ax.set_ylabel("Radiance (scaled)")
+    ax.set_title("Per Location Radiance (scaled) 2014-2019")
     ax.legend()
     plt.tight_layout()
     plt.show()
@@ -675,15 +675,19 @@ def get_valuable_locations():
     filtered_data = {}
 
     for location, counts in data.items():
-        count = counts["count"]
-        low_count = counts["low-count"]
-        high_count = counts["high-count"]
+        # Only best locations
+        # count = counts["count"]
+        # low_count = counts["low-count"]
+        # high_count = counts["high-count"]
 
-        has_good_low_ratio = low_count / (count) > valuable_ratio
-        has_good_high_ratio = high_count / (count) > valuable_ratio
+        # has_good_low_ratio = low_count / (count) > valuable_ratio
+        # has_good_high_ratio = high_count / (count) > valuable_ratio
 
-        if count > valuable_overall_count and has_good_low_ratio and has_good_high_ratio:
-            filtered_data[location] = counts
+        # if count > valuable_overall_count and has_good_low_ratio and has_good_high_ratio:
+        #     filtered_data[location] = counts
+
+        # All locations
+        filtered_data[location] = counts
 
     print("filtered_data", filtered_data)
 

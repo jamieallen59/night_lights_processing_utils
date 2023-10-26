@@ -370,6 +370,7 @@ def print_predict_accuracy_preencoded(y_test, y_pred):
         if item == 1:
             count_ones = count_ones + 1
 
+    print("--- Prediction evaluation ---")
     print("Prediction labels counts (zeros, ones)", count_zeros, count_ones)
     accuracy = accuracy_score(y_test, predicted_labels)
 
